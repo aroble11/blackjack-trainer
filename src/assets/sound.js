@@ -5,7 +5,8 @@
  * map later.
  *
  * iOS/Chrome require audio to start from a user gesture, so the AudioContext is
- * created and resumed lazily via unlockAudio() (call it on the first tap).
+ * created and resumed lazily via unlockAudio() (call it on the first tap). Every
+ * entry point is defensively wrapped so an audio failure can never break play.
  */
 
 let ctx = null;
@@ -21,46 +22,58 @@ export function isMuted() {
 
 /** Create/resume the AudioContext from within a user gesture (iOS-safe). */
 export function unlockAudio() {
-  if (!ctx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    ctx = new AC();
+  try {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+  } catch {
+    ctx = null; // audio unavailable — sounds become no-ops, gameplay continues
   }
-  if (ctx.state === 'suspended') ctx.resume();
 }
 
 function tone({ freq, type = 'sine', dur = 0.12, gain = 0.16, slideTo, delay = 0 }) {
   if (!ctx || muted) return;
-  const t = ctx.currentTime + delay;
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, t);
-  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  osc.connect(g).connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + dur + 0.03);
+  try {
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.03);
+  } catch {
+    /* ignore audio errors */
+  }
 }
 
 function noise({ dur = 0.09, gain = 0.16, filterFreq = 2200 }) {
   if (!ctx || muted) return;
-  const t = ctx.currentTime;
-  const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
-  const buffer = ctx.createBuffer(1, n, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n); // decaying
-  const src = ctx.createBufferSource();
-  src.buffer = buffer;
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = filterFreq;
-  const g = ctx.createGain();
-  g.gain.value = gain;
-  src.connect(lp).connect(g).connect(ctx.destination);
-  src.start(t);
+  try {
+    const t = ctx.currentTime;
+    const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buffer = ctx.createBuffer(1, n, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n); // decaying
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = filterFreq;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    src.connect(lp).connect(g).connect(ctx.destination);
+    src.start(t);
+  } catch {
+    /* ignore audio errors */
+  }
 }
 
 export const sound = {

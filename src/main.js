@@ -17,9 +17,14 @@ async function start() {
 
   // Restore bankroll + settings from a previous session, if any.
   const persisted = await loadPersisted();
-  if (persisted) {
-    if (Number.isFinite(persisted.bankrollCents)) game.bankrollCents = persisted.bankrollCents;
-    if (persisted.settings) Object.assign(settings, persisted.settings);
+  if (persisted && typeof persisted === 'object') {
+    // Guard against corrupt/tampered data: a finite, non-negative bankroll only.
+    if (Number.isFinite(persisted.bankrollCents) && persisted.bankrollCents >= 0) {
+      game.bankrollCents = persisted.bankrollCents;
+    }
+    if (persisted.settings && typeof persisted.settings === 'object') {
+      Object.assign(settings, persisted.settings);
+    }
   }
   setMuted(settings.muted);
 
