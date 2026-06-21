@@ -5,7 +5,7 @@ for mobile (Android Chrome; iOS Safari supported). Personal learning tool — ch
 only, no real money. The full vision and phase plan live in
 [`blackjack-trainer-spec.md`](blackjack-trainer-spec.md).
 
-**Status: Phase 1 (MVP) complete** — a correct, playable game of blackjack with a
+**Status: Phase 1 (MVP) + surrender/insurance fast-follow complete** — a correct, playable game of blackjack with a
 unit-tested engine and a plain mobile-first UI. Teaching/strategy hints, card
 counting, the betting simulator, polished art/sound, and saved progress are later
 phases (see [Roadmap](#roadmap)).
@@ -39,8 +39,9 @@ chip denominations.
 ### What Phase 1 implements
 
 Dealing, hit / stand / **double** / **split** (including split-aces one-card and
-double-after-split), dealer play with US **peek**, blackjack/bust/push detection,
-3:2 (or 6:5) payouts, chip betting, and bankroll tracking.
+double-after-split), **late surrender**, **insurance**, dealer play with US
+**peek**, blackjack/bust/push detection, 3:2 (or 6:5) payouts, chip betting, and
+bankroll tracking.
 
 The following config options are **not implemented yet**. The app runs a capability
 guard at startup and **warns in the console (and on-screen) if you enable any of
@@ -48,8 +49,7 @@ them**, rather than silently mis-playing:
 
 | Config option | Status |
 | --- | --- |
-| `player.surrender` (≠ `'none'`) | Phase 1 fast-follow |
-| `player.insuranceAllowed` | Phase 1 fast-follow |
+| `player.surrender: 'early'` | falls back to late surrender |
 | `shoe.continuousShuffle` | falls back to penetration-based reshuffle |
 | `dealer.peeksForBlackjack: false` (European) | falls back to US peek |
 | `player.resplitAces`, `player.hitSplitAces` | split aces always get one card |
@@ -113,7 +113,7 @@ floating-point drift.
 | Phase | Scope |
 | --- | --- |
 | **1 (done)** | Playable core: engine + plain UI + installable PWA shell |
-| 1 fast-follow | Surrender + insurance |
+| **1 fast-follow (done)** | Late surrender + insurance |
 | 2 | SVG/canvas art, animations, sound; IndexedDB persistence |
 | 3 | Basic-strategy advisor with explanations |
 | 4 | Hi-Lo running/true count as the shoe depletes |
