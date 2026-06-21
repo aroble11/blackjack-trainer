@@ -36,6 +36,7 @@ body {
 /* `100dvh` avoids the mobile URL-bar resize jump that `100vh` causes. Controls
    stay pinned at the bottom (thumb zone); the table scrolls if hands overflow. */
 .game {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -282,4 +283,104 @@ body {
 .config-warnings ul {
   margin: 0.3rem 0 0;
   padding-left: 1.1rem;
+}
+
+/* ── animations ──────────────────────────────────────────────────────────── */
+.card-slot {
+  display: inline-flex;
+}
+
+/* Only newly-dealt cards carry .dealt, so re-rendered cards appear instantly. */
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.92) rotate(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card-slot.dealt {
+  animation: deal-in 260ms ease-out both;
+  animation-delay: calc(max(var(--deal-i, 0), 0) * 55ms);
+}
+
+/* Chip stack representing the current bet; the top chip drops in on a raise. */
+.bet-stack {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding-left: 8px;
+}
+
+.stack-chip {
+  width: 30px;
+  margin-left: -11px;
+}
+
+.stack-chip:first-child {
+  margin-left: 0;
+}
+
+.stack-chip .chip-svg {
+  width: 30px;
+  max-width: none;
+}
+
+@keyframes chip-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bet-stack.grew .stack-chip:last-child {
+  animation: chip-drop 200ms ease-out both;
+}
+
+/* Transient shuffle cue. */
+.toast {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.62);
+  color: var(--gold);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  animation: toast-fade 1.6s ease-out forwards;
+}
+
+@keyframes toast-fade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-slot.dealt,
+  .bet-stack.grew .stack-chip:last-child,
+  .toast {
+    animation: none;
+  }
 }

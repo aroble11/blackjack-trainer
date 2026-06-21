@@ -40,6 +40,7 @@ export function mount(root, game, options = {}) {
     apply(game, el.dataset.action, el.dataset.value);
     if (persist) persist();
     render(root, game, options);
+    game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
   });
   render(root, game, options);
 }

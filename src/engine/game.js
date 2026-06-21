@@ -41,6 +41,7 @@ export function createGame(rules, opts = {}) {
     betCents: 0,
     dealerCards: [],
     dealerHoleRevealed: false,
+    justReshuffled: false,
     insuranceCents: 0,
     playerHands: [],
     activeHandIndex: 0,
@@ -89,7 +90,8 @@ export function canDeal(g) {
 // ── dealing ─────────────────────────────────────────────────────────────────
 export function deal(g) {
   if (!canDeal(g)) throw new Error('Cannot deal: invalid bet or wrong phase.');
-  if (needsReshuffle(g.shoe)) reshuffle(g.shoe);
+  g.justReshuffled = needsReshuffle(g.shoe); // surfaced to the UI for a shuffle cue
+  if (g.justReshuffled) reshuffle(g.shoe);
 
   g.bankrollCents -= g.betCents; // commit the stake
 
