@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "devDependencies": {
     "vite": "^8.0.16",

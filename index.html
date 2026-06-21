@@ -14,7 +14,9 @@
       content="Offline blackjack trainer — practice optimal play."
     />
     <title>Blackjack Trainer</title>
-    <!-- App icons + apple-touch-icon are added with the PWA shell in Step 6. -->
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <!-- The web manifest link and service-worker registration are injected at
+         build time by vite-plugin-pwa (see vite.config.js). -->
   </head>
   <body>
     <div id="app" aria-live="polite"></div>
