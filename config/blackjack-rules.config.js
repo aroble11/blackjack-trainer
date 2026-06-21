@@ -12,12 +12,11 @@
  * the house edge (and therefore the strategy hints). Defaults below describe a
  * solid, common Las Vegas–style game.
  *
- * PHASE 1 (MVP) NOTE: surrender and insurance are deferred to a Phase 1
- * fast-follow, so their flags below are set to the "off" values. At startup the
- * engine runs a capability guard (src/engine/validateRules.js) that warns if the
- * config enables anything Phase 1 doesn't implement yet, instead of silently
- * mis-playing. NOTE: rules are bundled at build time — after editing this file,
- * run `npm run build` (in dev, Vite hot-reloads automatically).
+ * At startup the engine runs a capability guard (src/engine/validateRules.js)
+ * that warns if the config enables anything not implemented yet (continuous
+ * shuffle, European no-peek, early surrender, re-split/hit aces), instead of
+ * silently mis-playing. Rules are bundled at build time — after editing this
+ * file, run `npm run build` (in dev, Vite hot-reloads automatically).
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -105,10 +104,10 @@ export const RULES = {
     // 'late'  = surrender allowed AFTER dealer checks for blackjack (common)
     // 'early' = surrender allowed BEFORE the peek (rare, player-friendly)
     // (Affects strategy hints.)
-    surrender: 'none', // Phase 1 MVP: was 'late' — deferred to fast-follow
+    surrender: 'late', // late surrender: forfeit half after the dealer peek
 
     // Is insurance offered when the dealer shows an Ace?
-    insuranceAllowed: false, // Phase 1 MVP: was true — deferred to fast-follow
+    insuranceAllowed: true, // offer insurance when the dealer shows an Ace
   },
 
   // ── TABLE & BETTING LIMITS ────────────────────────────────────────────────

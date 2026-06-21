@@ -3,27 +3,26 @@ import RULES from '../config/blackjack-rules.config.js';
 import { validateRules } from '../src/engine/validateRules.js';
 
 describe('config + capability guard', () => {
-  it('ships the Phase 1 MVP defaults (surrender + insurance off)', () => {
-    expect(RULES.player.surrender).toBe('none');
-    expect(RULES.player.insuranceAllowed).toBe(false);
+  it('ships the fast-follow defaults (late surrender + insurance on)', () => {
+    expect(RULES.player.surrender).toBe('late');
+    expect(RULES.player.insuranceAllowed).toBe(true);
   });
 
-  it('produces no warnings for the shipped MVP config', () => {
+  it('produces no warnings for the shipped config', () => {
     expect(validateRules(RULES).warnings).toEqual([]);
   });
 
-  it('warns once per unsupported option when re-enabled', () => {
+  it('warns once per unsupported option', () => {
     const { warnings } = validateRules({
       shoe: { continuousShuffle: true },
       dealer: { peeksForBlackjack: false },
       player: {
-        surrender: 'late',
-        insuranceAllowed: true,
+        surrender: 'early',
         resplitAces: true,
         hitSplitAces: true,
       },
     });
-    expect(warnings).toHaveLength(6);
+    expect(warnings).toHaveLength(5);
   });
 
   it('does not warn for supported settings', () => {
@@ -31,8 +30,8 @@ describe('config + capability guard', () => {
       shoe: { continuousShuffle: false },
       dealer: { peeksForBlackjack: true },
       player: {
-        surrender: 'none',
-        insuranceAllowed: false,
+        surrender: 'late',
+        insuranceAllowed: true,
         resplitAces: false,
         hitSplitAces: false,
       },

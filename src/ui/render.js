@@ -15,6 +15,7 @@ import {
   canStand,
   canDouble,
   canSplit,
+  canSurrender,
   canDeal,
   isBroke,
 } from '../engine/game.js';
@@ -53,6 +54,7 @@ const OUTCOME_TEXT = {
   lose: 'Lose',
   push: 'Push',
   blackjack: 'Blackjack!',
+  surrender: 'Surrender',
 };
 
 function renderPlayerHand(g, hand, index) {
@@ -111,12 +113,22 @@ function renderControls(g) {
       </footer>`;
   }
 
+  if (g.phase === Phase.Insurance) {
+    const cost = Math.floor(g.playerHands[0].stakeCents / 2);
+    return `<footer class="controls">
+        <p class="prompt">Dealer shows an Ace — take insurance?</p>
+        ${btn('takeInsurance', `Insure ${formatMoney(cost)}`, { cls: 'primary' })}
+        ${btn('declineInsurance', 'No')}
+      </footer>`;
+  }
+
   if (g.phase === Phase.PlayerTurn) {
     return `<footer class="controls">
         ${btn('hit', 'Hit', { disabled: !canHit(g) })}
         ${btn('stand', 'Stand', { disabled: !canStand(g) })}
         ${btn('double', 'Double', { disabled: !canDouble(g) })}
         ${btn('split', 'Split', { disabled: !canSplit(g) })}
+        ${canSurrender(g) ? btn('surrender', 'Surrender') : ''}
       </footer>`;
   }
 

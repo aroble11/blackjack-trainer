@@ -31,16 +31,10 @@ export function validateRules(rules) {
         'implemented in Phase 1; the dealer will peek for blackjack (US style).'
     );
   }
-  if (player.surrender && player.surrender !== 'none') {
+  if (player.surrender === 'early') {
     warnings.push(
-      `player.surrender='${player.surrender}': surrender is a Phase 1 fast-follow ` +
-        "and is not available yet; it is treated as 'none'."
-    );
-  }
-  if (player.insuranceAllowed === true) {
-    warnings.push(
-      'player.insuranceAllowed=true: insurance is a Phase 1 fast-follow and is not ' +
-        'offered yet.'
+      "player.surrender='early': early surrender is not implemented yet; it is " +
+        'treated as late surrender (offered after the peek).'
     );
   }
   if (player.resplitAces === true) {

@@ -20,6 +20,10 @@ import {
   double,
   canSplit,
   split,
+  canSurrender,
+  surrender,
+  takeInsurance,
+  declineInsurance,
   nextRound,
   rebuy,
 } from '../engine/game.js';
@@ -56,6 +60,15 @@ function apply(game, action, value) {
       break;
     case 'split':
       if (canSplit(game)) split(game);
+      break;
+    case 'surrender':
+      if (canSurrender(game)) surrender(game);
+      break;
+    case 'takeInsurance':
+      takeInsurance(game);
+      break;
+    case 'declineInsurance':
+      declineInsurance(game);
       break;
     case 'next':
       nextRound(game);

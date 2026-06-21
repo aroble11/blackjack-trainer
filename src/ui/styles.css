@@ -193,6 +193,9 @@ body {
 .badge.push {
   background: var(--push);
 }
+.badge.surrender {
+  background: #b0a99a;
+}
 
 /* ── controls ────────────────────────────────────────────────────────────── */
 .controls {
@@ -255,7 +258,8 @@ body {
   cursor: not-allowed;
 }
 
-.broke-msg {
+.broke-msg,
+.prompt {
   width: 100%;
   margin: 0 0 0.25rem;
   font-weight: 700;

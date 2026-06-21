@@ -22,6 +22,7 @@ import { toCents } from './money.js';
 
 export const Phase = {
   Betting: 'betting',
+  Insurance: 'insurance',
   PlayerTurn: 'playerTurn',
   DealerTurn: 'dealerTurn',
   RoundOver: 'roundOver',
@@ -40,6 +41,7 @@ export function createGame(rules, opts = {}) {
     betCents: 0,
     dealerCards: [],
     dealerHoleRevealed: false,
+    insuranceCents: 0,
     playerHands: [],
     activeHandIndex: 0,
   };
@@ -48,6 +50,7 @@ export function createGame(rules, opts = {}) {
 // ── small helpers ───────────────────────────────────────────────────────────
 const minBetCents = (g) => toCents(g.rules.table.minBet);
 const maxBetCents = (g) => toCents(g.rules.table.maxBet);
+const insuranceCostCents = (g) => Math.floor(g.playerHands[0].stakeCents / 2);
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 export function activeHand(g) {
@@ -98,30 +101,69 @@ export function deal(g) {
 
   g.dealerCards = dealer;
   g.dealerHoleRevealed = false;
+  g.insuranceCents = 0;
   g.playerHands = [newHand(player, g.betCents, false)];
   g.activeHandIndex = 0;
-  g.phase = Phase.PlayerTurn;
 
-  resolveNaturals(g);
+  offerInsuranceOrResolve(g);
   return g;
 }
 
 /**
- * The dealer always peeks (US style) when showing an Ace or a ten — this is the
- * Phase 1 behavior; the capability guard warns if the config disables it. Any
- * natural (dealer or player) ends the round immediately, before the player acts
- * and without the dealer drawing.
+ * Insurance is offered (when enabled and affordable) the instant the dealer
+ * shows an Ace, BEFORE the peek. Otherwise we go straight to resolving naturals.
  */
-function resolveNaturals(g) {
+function offerInsuranceOrResolve(g) {
+  const up = g.dealerCards[0];
+  if (
+    up.rank === 'A' &&
+    g.rules.player.insuranceAllowed &&
+    g.bankrollCents >= insuranceCostCents(g)
+  ) {
+    g.phase = Phase.Insurance;
+    return;
+  }
+  resolvePeekAndNaturals(g);
+}
+
+export function takeInsurance(g) {
+  if (g.phase !== Phase.Insurance) return g;
+  g.insuranceCents = insuranceCostCents(g);
+  g.bankrollCents -= g.insuranceCents; // commit the side bet (half the original)
+  resolvePeekAndNaturals(g);
+  return g;
+}
+
+export function declineInsurance(g) {
+  if (g.phase !== Phase.Insurance) return g;
+  g.insuranceCents = 0;
+  resolvePeekAndNaturals(g);
+  return g;
+}
+
+/**
+ * The dealer always peeks (US style) when showing an Ace or a ten — Phase 1
+ * behavior; the guard warns if the config disables it. Insurance, if taken, pays
+ * 2:1 on a dealer natural. Any natural (dealer or player) then ends the round
+ * immediately, before the player acts and without the dealer drawing.
+ */
+function resolvePeekAndNaturals(g) {
   const up = g.dealerCards[0];
   const dealerCouldHaveBlackjack = up.rank === 'A' || cardValue(up) === 10;
   const dealerBlackjack = dealerCouldHaveBlackjack && isBlackjack(g.dealerCards);
   const playerBlackjack = isBlackjack(g.playerHands[0].cards);
 
+  if (g.insuranceCents > 0 && dealerBlackjack) {
+    g.bankrollCents +=
+      g.insuranceCents + Math.round(g.insuranceCents * g.rules.payouts.insurance);
+  }
+
   if (dealerBlackjack || playerBlackjack) {
     g.playerHands[0].done = true;
     g.dealerHoleRevealed = true;
     settleRound(g); // dealer does not draw on a natural
+  } else {
+    g.phase = Phase.PlayerTurn;
   }
 }
 
@@ -148,6 +190,24 @@ export function double(g) {
   hand.stakeCents *= 2;
   hand.cards.push(draw(g.shoe)); // exactly one card
   advanceHand(g);
+  return g;
+}
+
+/**
+ * Late surrender: forfeit half the original bet and end the round, allowed only
+ * as the first action on the original two-card hand (the peek has already
+ * cleared a dealer natural). 'early' surrender falls back to this and the guard
+ * warns. The dealer does not draw.
+ */
+export function surrender(g) {
+  if (!canSurrender(g)) throw new Error('Surrender not allowed in this state.');
+  const hand = g.playerHands[0];
+  hand.done = true;
+  hand.outcome = 'surrender';
+  hand.returnCents = Math.floor(hand.stakeCents / 2);
+  g.bankrollCents += hand.returnCents;
+  g.dealerHoleRevealed = true;
+  g.phase = Phase.RoundOver;
   return g;
 }
 
@@ -204,6 +264,7 @@ export function nextRound(g) {
   g.dealerHoleRevealed = false;
   g.playerHands = [];
   g.activeHandIndex = 0;
+  g.insuranceCents = 0;
   g.betCents = Math.min(g.betCents, maxBetCents(g), g.bankrollCents); // keep last bet, but affordable
   return g;
 }
@@ -256,6 +317,15 @@ export function canSplit(g) {
   if (g.playerHands.length >= p.maxSplitHands) return false; // re-split cap
   if (g.bankrollCents < hand.stakeCents) return false; // can't fund the second bet
   return true;
+}
+
+export function canSurrender(g) {
+  if (g.phase !== Phase.PlayerTurn) return false;
+  const s = g.rules.player.surrender;
+  if (s !== 'late' && s !== 'early') return false; // 'early' falls back to late
+  if (g.playerHands.length !== 1 || g.activeHandIndex !== 0) return false;
+  const hand = g.playerHands[0];
+  return !hand.fromSplit && hand.cards.length === 2;
 }
 
 /**
