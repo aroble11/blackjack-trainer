@@ -12,6 +12,7 @@ import {
   canDouble,
   isBroke,
   rebuy,
+  resetBankroll,
   withinDoubleRestriction,
   Phase,
 } from '../src/engine/game.js';
@@ -150,5 +151,13 @@ describe('betting + bankroll', () => {
     rebuy(g);
     expect(g.bankrollCents).toBe(START);
     expect(isBroke(g)).toBe(false);
+  });
+
+  it('resetBankroll restores the starting bankroll on demand (while betting)', () => {
+    const g = gameWith(['2S', '3H', '4D', '5C']);
+    g.bankrollCents = 12345;
+    resetBankroll(g);
+    expect(g.bankrollCents).toBe(START);
+    expect(g.betCents).toBe(0);
   });
 });

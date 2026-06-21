@@ -281,6 +281,15 @@ export function rebuy(g) {
   return g;
 }
 
+/** Deliberately reset to the starting bankroll for a fresh session (only while betting). */
+export function resetBankroll(g) {
+  if (g.phase === Phase.Betting) {
+    g.bankrollCents = toCents(g.rules.table.startingBankroll);
+    g.betCents = 0;
+  }
+  return g;
+}
+
 // ── action legality (the UI's single source of truth) ────────────────────────
 export function canHit(g) {
   if (g.phase !== Phase.PlayerTurn) return false;

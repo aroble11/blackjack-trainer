@@ -5,7 +5,10 @@
  * everything: because each render rebuilds the subtree, delegation avoids
  * re-binding handlers and the double-fire that per-element listeners can cause
  * on mobile. Disabled buttons don't emit clicks, and the engine's own guards
- * (canDeal/canDouble/canSplit) are the source of truth — the UI just asks.
+ * (canDeal/canDouble/canSplit/...) are the source of truth — the UI just asks.
+ *
+ * `options` carries { warnings, settings, persist } from main.js; persist() is
+ * called after each action to save the bankroll between rounds.
  */
 
 import { render } from './render.js';
@@ -26,16 +29,19 @@ import {
   declineInsurance,
   nextRound,
   rebuy,
+  resetBankroll,
 } from '../engine/game.js';
 
-export function mount(root, game, warnings = []) {
+export function mount(root, game, options = {}) {
+  const { persist } = options;
   root.addEventListener('click', (event) => {
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
     apply(game, el.dataset.action, el.dataset.value);
-    render(root, game, warnings);
+    if (persist) persist();
+    render(root, game, options);
   });
-  render(root, game, warnings);
+  render(root, game, options);
 }
 
 function apply(game, action, value) {
@@ -75,6 +81,9 @@ function apply(game, action, value) {
       break;
     case 'rebuy':
       rebuy(game);
+      break;
+    case 'reset':
+      resetBankroll(game);
       break;
   }
 }

@@ -148,11 +148,19 @@ function rulesChip(rules) {
   return `${rules.shoe.numberOfDecks}D · ${rules.dealer.hitsSoft17 ? 'H17' : 'S17'} · ${pay}`;
 }
 
-export function render(root, g, warnings = []) {
+export function render(root, g, options = {}) {
+  const warnings = options.warnings ?? [];
   root.innerHTML = `<div class="game">
       <header class="topbar">
         <span class="bankroll">${formatMoney(g.bankrollCents)}</span>
-        <span class="rules-chip">${rulesChip(g.rules)}</span>
+        <span class="topbar-actions">
+          <span class="rules-chip">${rulesChip(g.rules)}</span>
+          ${
+            g.phase === Phase.Betting
+              ? '<button class="btn icon" data-action="reset" aria-label="Reset bankroll" title="Reset bankroll">↺</button>'
+              : ''
+          }
+        </span>
       </header>
       <div class="table-area">
         ${renderDealer(g)}
