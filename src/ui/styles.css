@@ -3,6 +3,11 @@
   --felt-dark: #094f2b;
   --gold: #e8c66a;
   --paper: #f5f3ec;
+  --ink: #14110c;
+  --card-red: #c0392b;
+  --win: #3ec46d;
+  --lose: #d6584f;
+  --push: #e8c66a;
   color-scheme: dark;
 }
 
@@ -18,7 +23,7 @@ body {
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--paper);
-  background: radial-gradient(circle at 50% 30%, var(--felt) 0%, var(--felt-dark) 100%);
+  background: radial-gradient(circle at 50% 25%, var(--felt) 0%, var(--felt-dark) 100%);
   min-height: 100dvh;
 }
 
@@ -26,71 +31,248 @@ body {
   min-height: 100dvh;
 }
 
-/* Mobile-first: the felt fills the viewport; safe-area padding keeps content
-   clear of the notch / home indicator. `100dvh` avoids the iOS/Android URL-bar
-   resize jump that `100vh` causes. */
-.table {
-  min-height: 100dvh;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem
-    max(1rem, env(safe-area-inset-bottom));
+/* `100dvh` avoids the mobile URL-bar resize jump that `100vh` causes. Controls
+   stay pinned at the bottom (thumb zone); the table scrolls if hands overflow. */
+.game {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: max(0.5rem, env(safe-area-inset-top)) 0.75rem
+    max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* ── top bar ─────────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.25rem 0.25rem 0.5rem;
+}
+
+.bankroll {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.rules-chip {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* ── table ───────────────────────────────────────────────────────────────── */
+.table-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.area-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.area-label .total {
+  margin-left: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--gold);
+  opacity: 1;
+}
+
+.hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* ── cards ───────────────────────────────────────────────────────────────── */
+.card {
+  width: 46px;
+  height: 66px;
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  gap: 1rem;
+  line-height: 1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  user-select: none;
 }
 
-.title {
-  margin: 0;
-  font-size: 2rem;
-  letter-spacing: 0.02em;
-  color: var(--gold);
+.card .rank {
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
-.subtitle {
-  margin: 0;
-  opacity: 0.85;
+.card .suit {
+  font-size: 1.2rem;
 }
 
-.config-readout {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  margin: 1rem 0 0;
-  padding: 1rem 1.25rem;
-  min-width: min(20rem, 90vw);
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(232, 198, 106, 0.35);
-  border-radius: 12px;
+.card.red {
+  color: var(--card-red);
 }
 
-.config-readout > div {
+.card.back {
+  background: repeating-linear-gradient(
+      45deg,
+      #7a1f24,
+      #7a1f24 6px,
+      #5e1418 6px,
+      #5e1418 12px
+    );
+  border: 2px solid var(--paper);
+}
+
+/* ── player hands ────────────────────────────────────────────────────────── */
+.hand-block {
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.hand-block + .hand-block {
+  margin-top: 0.6rem;
+}
+
+.hand-block.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 14px rgba(232, 198, 106, 0.35);
+}
+
+.hand-block.empty {
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+.hand-meta {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
 }
 
-.config-readout dt {
-  margin: 0;
+.hand-meta .total {
+  font-weight: 700;
+}
+
+.hand-meta .stake {
   opacity: 0.7;
 }
 
-.config-readout dd {
-  margin: 0;
-  font-weight: 600;
+.badge {
+  margin-left: auto;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
 }
 
+.badge.win,
+.badge.blackjack {
+  background: var(--win);
+}
+.badge.lose {
+  background: var(--lose);
+}
+.badge.push {
+  background: var(--push);
+}
+
+/* ── controls ────────────────────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+}
+
+.chips,
+.bet-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.bet-row {
+  align-items: center;
+}
+
+.bet-amount {
+  flex: 1;
+  font-weight: 700;
+}
+
+.btn {
+  flex: 1;
+  min-height: 52px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(245, 243, 236, 0.35);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--paper);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* removes the 300ms tap delay */
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--gold);
+}
+
+.btn.chip {
+  flex: 1;
+  min-width: 0;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.broke-msg {
+  width: 100%;
+  margin: 0 0 0.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ── config notes (only shown if the guard found unsupported options) ─────── */
 .config-warnings {
-  max-width: 32rem;
-  text-align: left;
-  font-size: 0.85rem;
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
   background: rgba(120, 60, 0, 0.35);
   border: 1px solid var(--gold);
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
 }
 
 .config-warnings ul {
-  margin: 0.4rem 0 0;
+  margin: 0.3rem 0 0;
   padding-left: 1.1rem;
 }

@@ -9,3 +9,6 @@ dev-dist/
 *.local
 .DS_Store
 Thumbs.db
+
+# local preview config (contains a machine-specific node path)
+.claude/launch.json
