@@ -7,14 +7,16 @@
  * on mobile. Disabled buttons don't emit clicks, and the engine's own guards
  * (canDeal/canDouble/canSplit/...) are the source of truth — the UI just asks.
  *
- * `options` carries { warnings, settings, persist } from main.js. The first tap
- * unlocks the AudioContext (iOS-safe); sounds then play per action + outcome.
+ * `options` carries { warnings, settings, persist } from main.js plus a `ui`
+ * object this module owns ({ hintShown, deviation }). The first tap unlocks the
+ * AudioContext (iOS-safe); sounds then play per action + outcome.
  */
 
 import { render } from './render.js';
 import { sound, unlockAudio, setMuted } from '../assets/sound.js';
 import {
   Phase,
+  activeHand,
   addToBet,
   clearBet,
   canDeal,
@@ -33,30 +35,65 @@ import {
   rebuy,
   resetBankroll,
 } from '../engine/game.js';
+import { bestAction } from '../teaching/advisor.js';
 
 export function mount(root, game, options = {}) {
   const { persist, settings } = options;
+  const ui = (options.ui = options.ui || { hintShown: false, deviation: null });
+
   root.addEventListener('click', (event) => {
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
     const action = el.dataset.action;
     unlockAudio(); // a real user gesture — unlock/resume audio
 
+    // Reveal the hint without disturbing game state.
+    if (action === 'hint') {
+      ui.hintShown = true;
+      render(root, game, options);
+      return;
+    }
+
     if (action === 'toggleMute') {
       if (settings) {
         settings.muted = !settings.muted;
         setMuted(settings.muted);
       }
-    } else {
-      apply(game, action, el.dataset.value);
-      playSound(game, action);
+      if (persist) persist();
+      render(root, game, options);
+      return;
     }
+
+    // A fresh action clears the previous hint reveal + deviation note.
+    ui.hintShown = false;
+    ui.deviation = null;
+
+    // For deviation warnings, capture the recommended move BEFORE applying it.
+    const recommended = recommendedMove(game, action);
+
+    apply(game, action, el.dataset.value);
+    playSound(game, action);
+
+    if (recommended && recommended !== action) ui.deviation = recommended;
 
     if (persist) persist();
     render(root, game, options);
     game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
   });
+
   render(root, game, options);
+}
+
+const DECISIONS = ['hit', 'stand', 'double', 'split', 'surrender'];
+
+/** The basic-strategy move for the current decision, or null if not applicable. */
+function recommendedMove(game, action) {
+  if (!DECISIONS.includes(action)) return null;
+  if (!game.rules.teaching?.warnOnStrategyDeviation) return null;
+  if (game.phase !== Phase.PlayerTurn) return null;
+  const hand = activeHand(game);
+  if (!hand || !game.dealerCards[0]) return null;
+  return bestAction(hand.cards, game.dealerCards[0], game.rules, { fromSplit: hand.fromSplit }).action;
 }
 
 function apply(game, action, value) {

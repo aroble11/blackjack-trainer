@@ -18,7 +18,10 @@ import {
   canSurrender,
   canDeal,
   isBroke,
+  activeHand,
 } from '../engine/game.js';
+import { bestAction } from '../teaching/advisor.js';
+import { explainAction } from '../teaching/explain.js';
 
 const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
@@ -85,6 +88,14 @@ const OUTCOME_TEXT = {
   surrender: 'Surrender',
 };
 
+const ACTION_LABEL = {
+  stand: 'Stand',
+  hit: 'Hit',
+  double: 'Double',
+  split: 'Split',
+  surrender: 'Surrender',
+};
+
 function renderPlayerHand(g, hand, index) {
   const active = g.phase === Phase.PlayerTurn && index === g.activeHandIndex;
   const shown = shownByHand.get(hand) ?? 0;
@@ -129,7 +140,26 @@ function renderBetStack(g) {
   return `<div class="bet-stack${grew ? ' grew' : ''}">${chips}</div>`;
 }
 
-function renderControls(g) {
+function renderHint(g, options) {
+  const teaching = g.rules.teaching || {};
+  if (!teaching.showBasicStrategyHints) return '';
+  if (!options.ui?.hintShown) {
+    return `<button class="btn hint-toggle" data-action="hint">💡 Show basic-strategy hint</button>`;
+  }
+  const hand = activeHand(g);
+  if (!hand || !g.dealerCards[0]) return '';
+  const rec = bestAction(hand.cards, g.dealerCards[0], g.rules, { fromSplit: hand.fromSplit });
+  const why = teaching.explainHints
+    ? `<p class="hint-why">${explainAction(rec, g.dealerCards[0])}</p>`
+    : '';
+  return `<div class="hint-panel">
+      <p class="hint-move">Basic strategy: <strong>${ACTION_LABEL[rec.action]}</strong></p>
+      ${why}
+      <p class="hint-caveat">Computed from your rules — cross-check an authoritative chart for the closest calls.</p>
+    </div>`;
+}
+
+function renderControls(g, options) {
   if (g.phase === Phase.Betting) {
     if (isBroke(g)) {
       return `<footer class="controls">
@@ -168,11 +198,14 @@ function renderControls(g) {
 
   if (g.phase === Phase.PlayerTurn) {
     return `<footer class="controls">
-        ${btn('hit', 'Hit', { disabled: !canHit(g) })}
-        ${btn('stand', 'Stand', { disabled: !canStand(g) })}
-        ${btn('double', 'Double', { disabled: !canDouble(g) })}
-        ${btn('split', 'Split', { disabled: !canSplit(g) })}
-        ${canSurrender(g) ? btn('surrender', 'Surrender') : ''}
+        ${renderHint(g, options)}
+        <div class="action-row">
+          ${btn('hit', 'Hit', { disabled: !canHit(g) })}
+          ${btn('stand', 'Stand', { disabled: !canStand(g) })}
+          ${btn('double', 'Double', { disabled: !canDouble(g) })}
+          ${btn('split', 'Split', { disabled: !canSplit(g) })}
+          ${canSurrender(g) ? btn('surrender', 'Surrender') : ''}
+        </div>
       </footer>`;
   }
 
@@ -208,11 +241,16 @@ export function render(root, g, options = {}) {
           }
         </span>
       </header>
+      ${
+        options.ui?.deviation
+          ? `<div class="deviation-note" role="status">Basic strategy here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`
+          : ''
+      }
       <div class="table-area">
         ${renderDealer(g)}
         ${renderPlayer(g)}
       </div>
-      ${renderControls(g)}
+      ${renderControls(g, options)}
       ${g.justReshuffled ? '<div class="toast" role="status">Shuffling…</div>' : ''}
       ${
         warnings.length

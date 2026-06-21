@@ -384,3 +384,65 @@ body {
     animation: none;
   }
 }
+
+/* ── basic-strategy hint (tap to reveal) ─────────────────────────────────── */
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.hint-toggle {
+  flex: none;
+  width: 100%;
+  min-height: 0;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--gold);
+  background: rgba(232, 198, 106, 0.14);
+  border-color: rgba(232, 198, 106, 0.5);
+}
+
+.hint-panel {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(232, 198, 106, 0.5);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.hint-move {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.hint-move strong {
+  color: var(--gold);
+}
+
+.hint-why {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.hint-caveat {
+  margin: 0.45rem 0 0;
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.deviation-note {
+  margin: 0.25rem 0.25rem 0;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: rgba(120, 60, 0, 0.4);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.deviation-note strong {
+  color: var(--gold);
+}
