@@ -7,7 +7,7 @@
  */
 
 import { handValue } from '../engine/hand.js';
-import { isRed, cardValue } from '../engine/cards.js';
+import { cardFaceSvg, cardBackSvg, chipSvg } from '../assets/svg.js';
 import { formatMoney } from '../engine/money.js';
 import {
   Phase,
@@ -20,12 +20,8 @@ import {
   isBroke,
 } from '../engine/game.js';
 
-const cardFront = (card) =>
-  `<div class="card ${isRed(card) ? 'red' : 'black'}">
-     <span class="rank">${card.rank}</span><span class="suit">${card.suit}</span>
-   </div>`;
-
-const cardBack = () => `<div class="card back" aria-label="face down card"></div>`;
+const cardFront = cardFaceSvg;
+const cardBack = cardBackSvg;
 
 function totalLabel(cards) {
   const { total, soft } = handValue(cards);
@@ -96,7 +92,7 @@ function renderControls(g) {
     }
     const chips = g.rules.table.chipDenominations
       .map((d) =>
-        btn('chip', `$${d}`, {
+        btn('chip', chipSvg(d), {
           value: d * 100,
           cls: 'chip',
           disabled: g.bankrollCents < d * 100,

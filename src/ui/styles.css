@@ -23,7 +23,9 @@ body {
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--paper);
-  background: radial-gradient(circle at 50% 25%, var(--felt) 0%, var(--felt-dark) 100%);
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 16%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(circle at 50% 30%, var(--felt) 0%, var(--felt-dark) 100%);
   min-height: 100dvh;
 }
 
@@ -113,44 +115,17 @@ body {
   gap: 0.4rem;
 }
 
-/* ── cards ───────────────────────────────────────────────────────────────── */
-.card {
+/* ── cards (programmatic SVG faces from src/assets) ──────────────────────── */
+.card-svg {
   width: 46px;
-  height: 66px;
-  border-radius: 7px;
-  background: var(--paper);
-  color: var(--ink);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
   user-select: none;
 }
 
-.card .rank {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.card .suit {
-  font-size: 1.2rem;
-}
-
-.card.red {
-  color: var(--card-red);
-}
-
-.card.back {
-  background: repeating-linear-gradient(
-      45deg,
-      #7a1f24,
-      #7a1f24 6px,
-      #5e1418 6px,
-      #5e1418 12px
-    );
-  border: 2px solid var(--paper);
+.card-svg text {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* ── player hands ────────────────────────────────────────────────────────── */
@@ -266,8 +241,19 @@ body {
 .btn.chip {
   flex: 1;
   min-width: 0;
-  border-radius: 999px;
-  font-weight: 700;
+  min-height: 0;
+  padding: 0.15rem;
+  border: none;
+  background: none;
+}
+
+.chip-svg {
+  width: 100%;
+  max-width: 56px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
 }
 
 .btn:disabled {
