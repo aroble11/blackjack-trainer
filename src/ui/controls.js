@@ -7,12 +7,14 @@
  * on mobile. Disabled buttons don't emit clicks, and the engine's own guards
  * (canDeal/canDouble/canSplit/...) are the source of truth — the UI just asks.
  *
- * `options` carries { warnings, settings, persist } from main.js; persist() is
- * called after each action to save the bankroll between rounds.
+ * `options` carries { warnings, settings, persist } from main.js. The first tap
+ * unlocks the AudioContext (iOS-safe); sounds then play per action + outcome.
  */
 
 import { render } from './render.js';
+import { sound, unlockAudio, setMuted } from '../assets/sound.js';
 import {
+  Phase,
   addToBet,
   clearBet,
   canDeal,
@@ -33,11 +35,23 @@ import {
 } from '../engine/game.js';
 
 export function mount(root, game, options = {}) {
-  const { persist } = options;
+  const { persist, settings } = options;
   root.addEventListener('click', (event) => {
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
-    apply(game, el.dataset.action, el.dataset.value);
+    const action = el.dataset.action;
+    unlockAudio(); // a real user gesture — unlock/resume audio
+
+    if (action === 'toggleMute') {
+      if (settings) {
+        settings.muted = !settings.muted;
+        setMuted(settings.muted);
+      }
+    } else {
+      apply(game, action, el.dataset.value);
+      playSound(game, action);
+    }
+
     if (persist) persist();
     render(root, game, options);
     game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
@@ -87,4 +101,25 @@ function apply(game, action, value) {
       resetBankroll(game);
       break;
   }
+}
+
+function playSound(game, action) {
+  if (['chip', 'clearBet', 'takeInsurance', 'declineInsurance'].includes(action)) {
+    sound.chip();
+  } else if (action === 'deal') {
+    if (game.justReshuffled) sound.shuffle();
+    sound.deal();
+  } else if (action === 'hit' || action === 'double' || action === 'split') {
+    sound.deal();
+  }
+  if (game.phase === Phase.RoundOver) {
+    sound[roundOutcome(game)]?.();
+  }
+}
+
+function roundOutcome(game) {
+  const outcomes = game.playerHands.map((h) => h.outcome);
+  if (outcomes.some((o) => o === 'win' || o === 'blackjack')) return 'win';
+  if (outcomes.length && outcomes.every((o) => o === 'lose' || o === 'surrender')) return 'lose';
+  return 'push';
 }

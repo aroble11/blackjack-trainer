@@ -194,11 +194,13 @@ function rulesChip(rules) {
 
 export function render(root, g, options = {}) {
   const warnings = options.warnings ?? [];
+  const muted = options.settings?.muted ?? false;
   root.innerHTML = `<div class="game">
       <header class="topbar">
         <span class="bankroll">${formatMoney(g.bankrollCents)}</span>
         <span class="topbar-actions">
           <span class="rules-chip">${rulesChip(g.rules)}</span>
+          <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${muted ? '🔇' : '🔊'}</button>
           ${
             g.phase === Phase.Betting
               ? '<button class="btn icon" data-action="reset" aria-label="Reset bankroll" title="Reset bankroll">↺</button>'
