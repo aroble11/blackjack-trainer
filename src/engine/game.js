@@ -14,8 +14,8 @@
  */
 
 import { createShoe, draw, needsReshuffle, reshuffle } from './shoe.js';
-import { handValue, isBlackjack, isBust } from './hand.js';
-import { cardValue } from './cards.js';
+import { handValue, isBlackjack, isBust, isPair } from './hand.js';
+import { cardValue, isAce } from './cards.js';
 import { playDealerHand } from './dealer.js';
 import { settle } from './settlement.js';
 import { toCents } from './money.js';
@@ -153,10 +153,22 @@ export function double(g) {
 
 /** Finish the active hand and move on; when the last hand is done, the dealer plays. */
 function advanceHand(g) {
-  activeHand(g).done = true;
-  g.activeHandIndex += 1;
-  if (g.activeHandIndex < g.playerHands.length) return; // play the next hand
-  playDealerAndSettle(g);
+  const cur = activeHand(g);
+  if (cur) cur.done = true;
+  // Move to the next hand that still needs playing, skipping any already
+  // resolved (e.g. both halves of a split-ace, which stand on one card each).
+  do {
+    g.activeHandIndex += 1;
+  } while (
+    g.activeHandIndex < g.playerHands.length &&
+    g.playerHands[g.activeHandIndex].done
+  );
+  if (g.activeHandIndex >= g.playerHands.length) {
+    playDealerAndSettle(g);
+    return;
+  }
+  // A hand already totalling 21 (e.g. a split card made 21) needs no action.
+  if (handValue(activeHand(g).cards).total >= 21) advanceHand(g);
 }
 
 function playDealerAndSettle(g) {
@@ -233,9 +245,54 @@ export function canDouble(g) {
   return withinDoubleRestriction(hand.cards, p.doubleRestriction);
 }
 
-export function canSplit() {
-  // Implemented in Step 4.
-  return false;
+export function canSplit(g) {
+  if (g.phase !== Phase.PlayerTurn) return false;
+  const hand = activeHand(g);
+  if (!hand || hand.done) return false;
+  const p = g.rules.player;
+  if (!p.splitAllowed) return false;
+  if (hand.cards.length !== 2) return false;
+  if (!isPair(hand.cards)) return false;
+  if (g.playerHands.length >= p.maxSplitHands) return false; // re-split cap
+  if (g.bankrollCents < hand.stakeCents) return false; // can't fund the second bet
+  return true;
+}
+
+/**
+ * Split the active pair. The original hand keeps its first card; the second card
+ * seeds a new hand inserted immediately to its right (index i+1), so the left
+ * hand — including any re-splits — finishes before the right one. One card is
+ * dealt to each, and a matching stake is committed.
+ *
+ * Split aces take exactly one card each and stand (Phase 1 does not implement
+ * hit/re-split aces; the capability guard warns if the config enables them). A
+ * 21 made on any split hand is not a natural — settlement handles that via each
+ * hand's fromSplit flag.
+ */
+export function split(g) {
+  if (!canSplit(g)) throw new Error('Split not allowed in this state.');
+  const i = g.activeHandIndex;
+  const hand = g.playerHands[i];
+  const splittingAces = hand.cards.every(isAce);
+
+  g.bankrollCents -= hand.stakeCents;
+
+  const movedCard = hand.cards.pop();
+  hand.fromSplit = true;
+  const sibling = newHand([movedCard], hand.stakeCents, true);
+  g.playerHands.splice(i + 1, 0, sibling);
+
+  hand.cards.push(draw(g.shoe)); // left hand's second card
+  sibling.cards.push(draw(g.shoe)); // right hand's second card
+
+  if (splittingAces && !g.rules.player.hitSplitAces) {
+    hand.done = true;
+    sibling.done = true;
+    advanceHand(g); // skips both done ace hands -> next hand or dealer
+  } else if (handValue(hand.cards).total >= 21) {
+    advanceHand(g); // the split card made 21 on the left hand
+  }
+  return g;
 }
 
 /**
