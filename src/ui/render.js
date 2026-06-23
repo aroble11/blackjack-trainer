@@ -22,6 +22,7 @@ import {
 } from '../engine/game.js';
 import { bestAction } from '../teaching/advisor.js';
 import { explainAction } from '../teaching/explain.js';
+import { countFromShoe } from '../teaching/counting.js';
 
 const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
@@ -231,6 +232,41 @@ function rulesChip(rules) {
   return `${rules.shoe.numberOfDecks}D · ${rules.dealer.hitsSoft17 ? 'H17' : 'S17'} · ${pay}`;
 }
 
+// ── card-counting readout (Phase 4) ─────────────────────────────────────────
+const signClass = (n) => (n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero');
+const fmtRunning = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
+function fmtTrue(n) {
+  const r = Math.round(n * 10) / 10; // round first so −0.04 shows "0.0", not "−0.0"
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r).toFixed(1);
+}
+
+/**
+ * Live Hi-Lo readout. Shown only for a depleting shoe (counting is meaningless
+ * under a continuous shuffler) and when the config enables it. Reads the count
+ * straight from the shoe's seen cards, so it reflects exactly what the player
+ * has seen — the hole card only once it's revealed.
+ */
+function renderCount(g) {
+  const t = g.rules.teaching || {};
+  if (!t.showCardCounting || t.countingSystem === 'none' || g.rules.shoe.continuousShuffle) {
+    return '';
+  }
+  const { running, trueCount, decksRemaining } = countFromShoe(g.shoe, t.countingSystem);
+  const truePart = t.showTrueCount
+    ? `<span class="count-stat"><span class="count-label">True</span><span class="count-val ${signClass(
+        Math.round(trueCount * 10)
+      )}">${fmtTrue(trueCount)}</span></span>`
+    : '';
+  return `<div class="count-bar" role="status" aria-label="Card counting readout">
+      <span class="count-system">Hi-Lo</span>
+      <span class="count-stat"><span class="count-label">Running</span><span class="count-val ${signClass(
+        running
+      )}">${fmtRunning(running)}</span></span>
+      ${truePart}
+      <span class="count-decks">${decksRemaining.toFixed(1)} decks</span>
+    </div>`;
+}
+
 export function render(root, g, options = {}) {
   const warnings = options.warnings ?? [];
   const muted = options.settings?.muted ?? false;
@@ -247,6 +283,7 @@ export function render(root, g, options = {}) {
           }
         </span>
       </header>
+      ${renderCount(g)}
       ${
         options.ui?.deviation
           ? `<div class="deviation-note" role="status">Basic strategy here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`

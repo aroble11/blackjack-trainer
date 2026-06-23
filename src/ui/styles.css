@@ -83,6 +83,63 @@ body {
   border-radius: 8px;
 }
 
+/* ── card-counting readout (Phase 4) ─────────────────────────────────────── */
+.count-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.1rem 0.25rem 0;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(245, 243, 236, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.count-system {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.count-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.count-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.count-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.count-val.pos {
+  color: var(--win);
+}
+.count-val.neg {
+  color: var(--lose);
+}
+.count-val.zero {
+  color: var(--paper);
+  opacity: 0.85;
+}
+
+.count-decks {
+  margin-left: auto;
+  font-size: 0.72rem;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── table ───────────────────────────────────────────────────────────────── */
 .table-area {
   flex: 1;

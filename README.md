@@ -5,10 +5,11 @@ for mobile (Android Chrome; iOS Safari supported). Personal learning tool — ch
 only, no real money. The full vision and phase plan live in
 [`blackjack-trainer-spec.md`](blackjack-trainer-spec.md).
 
-**Status: Phases 1–3 complete** — a correct, unit-tested game of blackjack with a
+**Status: Phases 1–4 complete** — a correct, unit-tested game of blackjack with a
 mobile-first UI, SVG cards & chips, animations, synthesized sound, saved progress,
-and a **computed basic-strategy advisor** (tap-to-reveal hints with explanations).
-Card counting and the betting simulator are later phases (see [Roadmap](#roadmap)).
+a **computed basic-strategy advisor** (tap-to-reveal hints with explanations), and a
+**live Hi-Lo card-counting readout** as the shoe depletes. The betting simulator is a
+later phase (see [Roadmap](#roadmap)).
 
 ## Quick start
 
@@ -46,6 +47,10 @@ bankroll tracking.
 Plus a **basic-strategy advisor** (tap *💡 Show basic-strategy hint* during your
 turn): it recommends the optimal move with a plain-language why and flags it when
 you deviate. See [Strategy hints](#strategy-hints) for how it's derived.
+
+Plus a **live Hi-Lo count** (running + true count, with decks remaining) shown under
+the top bar — it updates as cards appear and counts the dealer's hole card only once
+it's revealed. See [Card counting](#card-counting).
 
 The following config options are **not implemented yet**. The app runs a capability
 guard at startup and **warns in the console (and on-screen) if you enable any of
@@ -112,6 +117,21 @@ It is validated cell-by-cell against the canonical 6-deck S17 DAS chart in the t
 relying on them** — teaching a wrong move is the worst possible bug. Toggle the
 advisor off via `teaching.showBasicStrategyHints` in the config any time.
 
+## Card counting
+
+With a depleting shoe (not a continuous shuffler), the app shows a **live Hi-Lo
+readout** under the top bar: the **running count**, the **true count** (running ÷
+decks remaining), and how many decks are left. It updates as each card appears and
+counts the dealer's hole card **only once it's revealed** — exactly what you'd see at
+the table — accumulating across rounds until the shoe reshuffles.
+
+Hi-Lo tags are **2–6 → +1, 7–9 → 0, 10–A → −1**; the value shows green when the count
+favors the player and red when it favors the house. Toggle it via
+`teaching.showCardCounting` (and `teaching.showTrueCount`) in the config; it's hidden
+when `shoe.continuousShuffle` is on. Only Hi-Lo is implemented — the startup
+capability guard warns if another `teaching.countingSystem` is configured and falls
+back to Hi-Lo.
+
 ## Installing on a phone (Phase 6)
 
 A PWA's install + offline features require **HTTPS** (only `localhost` is exempt),
@@ -144,6 +164,6 @@ anchors). Money is tracked in **integer cents** to avoid floating-point drift.
 | **1 fast-follow (done)** | Late surrender + insurance |
 | **2 (done)** | SVG cards/chips, deal/chip/shuffle animations, synthesized sound, IndexedDB persistence |
 | **3 (done)** | Computed basic-strategy advisor with tap-to-reveal hints + explanations |
-| 4 | Hi-Lo running/true count as the shoe depletes |
+| **4 (done)** | Hi-Lo running/true count as the shoe depletes |
 | 5 | Betting-system simulator (e.g. Martingale) with outcome charts |
 | 6 | Host over HTTPS; verify install + offline on real Android & iOS |
