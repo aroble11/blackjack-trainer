@@ -18,6 +18,7 @@ export function validateRules(rules) {
   const shoe = rules?.shoe ?? {};
   const dealer = rules?.dealer ?? {};
   const player = rules?.player ?? {};
+  const teaching = rules?.teaching ?? {};
 
   if (shoe.continuousShuffle === true) {
     warnings.push(
@@ -47,6 +48,17 @@ export function validateRules(rules) {
     warnings.push(
       'player.hitSplitAces=true: hitting split aces is not implemented in Phase 1; ' +
         'split aces receive exactly one card each.'
+    );
+  }
+
+  if (
+    teaching.countingSystem &&
+    teaching.countingSystem !== 'none' &&
+    teaching.countingSystem !== 'hi-lo'
+  ) {
+    warnings.push(
+      `teaching.countingSystem='${teaching.countingSystem}': only Hi-Lo is ` +
+        'implemented; the counting readout will use Hi-Lo instead.'
     );
   }
 

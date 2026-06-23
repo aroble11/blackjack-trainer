@@ -61,6 +61,7 @@ export function createShoe(rules, { rng = Math.random, cards } = {}) {
   return {
     cards: deck,
     pos: 0,
+    seenCards: [], // cards the player has SEEN this shoe (for counting): appended as revealed, cleared on reshuffle
     cutIndex: Math.floor(deck.length * penetration),
     rng,
     numberOfDecks,
@@ -98,5 +99,6 @@ export function needsReshuffle(shoe) {
 export function reshuffle(shoe) {
   shuffle(shoe.cards, shoe.rng);
   shoe.pos = 0;
+  shoe.seenCards = []; // a fresh shoe — the running count starts over
   return shoe;
 }

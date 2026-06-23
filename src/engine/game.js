@@ -62,6 +62,23 @@ function newHand(cards, stakeCents, fromSplit = false) {
   return { cards, stakeCents, fromSplit, done: false, outcome: null, returnCents: 0 };
 }
 
+// ── counting support ─────────────────────────────────────────────────────────
+// Record cards the moment the player SEES them, so the odds tracker counts as a
+// real player would. The dealer hole card is added only when it is turned over
+// (revealDealerHole), never when it is dealt. The list lives on the shoe and is
+// cleared on a reshuffle (see shoe.js).
+function markSeen(g, ...cards) {
+  const seen = g.shoe.seenCards || (g.shoe.seenCards = []);
+  for (const c of cards) if (c) seen.push(c);
+}
+
+/** Turn the dealer's hole card face up (idempotent) and count it as now-seen. */
+function revealDealerHole(g) {
+  if (g.dealerHoleRevealed) return; // already revealed + counted
+  g.dealerHoleRevealed = true;
+  markSeen(g, g.dealerCards[1]);
+}
+
 // ── betting ─────────────────────────────────────────────────────────────────
 export function setBet(g, cents) {
   if (g.phase !== Phase.Betting) return g.betCents;
@@ -106,6 +123,9 @@ export function deal(g) {
   g.insuranceCents = 0;
   g.playerHands = [newHand(player, g.betCents, false)];
   g.activeHandIndex = 0;
+
+  // The player's two cards and the dealer upcard are visible now; the hole is not.
+  markSeen(g, player[0], player[1], dealer[0]);
 
   offerInsuranceOrResolve(g);
   return g;
@@ -162,7 +182,7 @@ function resolvePeekAndNaturals(g) {
 
   if (dealerBlackjack || playerBlackjack) {
     g.playerHands[0].done = true;
-    g.dealerHoleRevealed = true;
+    revealDealerHole(g); // the hole turns over — count it
     settleRound(g); // dealer does not draw on a natural
   } else {
     g.phase = Phase.PlayerTurn;
@@ -173,7 +193,9 @@ function resolvePeekAndNaturals(g) {
 export function hit(g) {
   if (!canHit(g)) return g;
   const hand = activeHand(g);
-  hand.cards.push(draw(g.shoe));
+  const card = draw(g.shoe);
+  hand.cards.push(card);
+  markSeen(g, card);
   // Reaching 21 (or busting) ends the hand — no useful action remains.
   if (handValue(hand.cards).total >= 21) advanceHand(g);
   return g;
@@ -190,7 +212,9 @@ export function double(g) {
   const hand = activeHand(g);
   g.bankrollCents -= hand.stakeCents; // commit a matching stake
   hand.stakeCents *= 2;
-  hand.cards.push(draw(g.shoe)); // exactly one card
+  const card = draw(g.shoe); // exactly one card
+  hand.cards.push(card);
+  markSeen(g, card);
   advanceHand(g);
   return g;
 }
@@ -208,7 +232,7 @@ export function surrender(g) {
   hand.outcome = 'surrender';
   hand.returnCents = Math.floor(hand.stakeCents / 2);
   g.bankrollCents += hand.returnCents;
-  g.dealerHoleRevealed = true;
+  revealDealerHole(g); // the hole turns over — count it
   g.phase = Phase.RoundOver;
   return g;
 }
@@ -235,10 +259,12 @@ function advanceHand(g) {
 
 function playDealerAndSettle(g) {
   g.phase = Phase.DealerTurn;
-  g.dealerHoleRevealed = true;
+  revealDealerHole(g); // the hole turns over — count it
   // The dealer only draws if at least one player hand is still live.
   if (g.playerHands.some((h) => !isBust(h.cards))) {
+    const fromIndex = g.dealerCards.length;
     g.dealerCards = playDealerHand(g.dealerCards, g.shoe, g.rules);
+    for (let i = fromIndex; i < g.dealerCards.length; i++) markSeen(g, g.dealerCards[i]);
   }
   settleRound(g);
 }
@@ -363,8 +389,11 @@ export function split(g) {
   const sibling = newHand([movedCard], hand.stakeCents, true);
   g.playerHands.splice(i + 1, 0, sibling);
 
-  hand.cards.push(draw(g.shoe)); // left hand's second card
-  sibling.cards.push(draw(g.shoe)); // right hand's second card
+  const leftCard = draw(g.shoe);
+  hand.cards.push(leftCard); // left hand's second card
+  const rightCard = draw(g.shoe);
+  sibling.cards.push(rightCard); // right hand's second card
+  markSeen(g, leftCard, rightCard); // the moved card was already counted at the deal
 
   if (splittingAces && !g.rules.player.hitSplitAces) {
     hand.done = true;
