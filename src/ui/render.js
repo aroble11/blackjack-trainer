@@ -27,10 +27,12 @@ const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
 
 // ── render-side animation state ──────────────────────────────────────────────
-// The whole subtree re-renders each action, so to animate only newly-dealt
-// cards we track how many each hand has already shown. Player hands are keyed by
-// object identity (a split makes a fresh hand object -> its cards animate in);
-// the dealer hand (a replaced array) is tracked by count and reset each round.
+// The whole subtree re-renders each action, so to animate only newly-dealt cards
+// we remember which cards each hand has already shown. Player hands track the set
+// of card OBJECTS shown last render (keyed by hand identity): a split swaps the
+// left hand's second card in place, so a plain count would miss that the new card
+// is freshly dealt. The dealer hand (a replaced array) is tracked by count and
+// reset each round.
 const shownByHand = new WeakMap();
 let shownDealer = 0;
 let prevBetCents = 0;
@@ -98,11 +100,15 @@ const ACTION_LABEL = {
 
 function renderPlayerHand(g, hand, index) {
   const active = g.phase === Phase.PlayerTurn && index === g.activeHandIndex;
-  const shown = shownByHand.get(hand) ?? 0;
+  const shown = shownByHand.get(hand); // Set of card objects shown last render, or undefined
+  let newOrder = 0; // stagger index among only the newly-dealt cards
   const cardsHtml = hand.cards
-    .map((c, i) => cardSlot(cardFront(c), i >= shown, i - shown))
+    .map((c) => {
+      const isNew = !shown || !shown.has(c);
+      return cardSlot(cardFront(c), isNew, isNew ? newOrder++ : 0);
+    })
     .join('');
-  shownByHand.set(hand, hand.cards.length);
+  shownByHand.set(hand, new Set(hand.cards));
   const badge = hand.outcome
     ? `<span class="badge ${hand.outcome}">${OUTCOME_TEXT[hand.outcome]}</span>`
     : '';

@@ -83,11 +83,14 @@ export function cardsRemaining(shoe) {
 
 /**
  * Should we reshuffle before dealing the next round? True once the cut card is
- * reached (penetration), or always when continuousShuffle is on. Call this only
- * BETWEEN rounds.
+ * reached (penetration). Call this only BETWEEN rounds.
+ *
+ * continuousShuffle (a CSM) is NOT implemented — the capability guard
+ * (validateRules.js) warns, and we deliberately fall back to a normal
+ * penetration-based reshuffle so the configured flag never silently changes
+ * play. (See README's capability table.)
  */
 export function needsReshuffle(shoe) {
-  if (shoe.continuousShuffle) return true;
   return shoe.pos >= shoe.cutIndex;
 }
 

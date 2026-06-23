@@ -49,6 +49,19 @@ describe('deal', () => {
     expect(canDeal(g)).toBe(false);
     expect(() => deal(g)).toThrow();
   });
+
+  it('does not reshuffle every hand when continuousShuffle is on (falls back to penetration)', () => {
+    // CSM is unimplemented: the flag must not force a per-hand reshuffle. A fresh
+    // shoe well below the cut card deals from the top and just advances the
+    // pointer, exactly like a normal shoe.
+    const g = createGame(withRules({ shoe: { continuousShuffle: true } }), {
+      cards: parseCards(['9S', '5H', '7D', '6C', '2S', '3H', '4D', '8C']), // cutIndex = 6
+    });
+    setBet(g, 500);
+    deal(g);
+    expect(g.justReshuffled).toBe(false); // the flag did not trigger a reshuffle
+    expect(g.shoe.pos).toBe(4); // 4 cards drawn, not reset to the top
+  });
 });
 
 describe('round outcomes', () => {

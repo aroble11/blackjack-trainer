@@ -93,7 +93,15 @@ function recommendedMove(game, action) {
   if (game.phase !== Phase.PlayerTurn) return null;
   const hand = activeHand(game);
   if (!hand || !game.dealerCards[0]) return null;
-  return bestAction(hand.cards, game.dealerCards[0], game.rules, { fromSplit: hand.fromSplit }).action;
+  const best = bestAction(hand.cards, game.dealerCards[0], game.rules, { fromSplit: hand.fromSplit }).action;
+  // The advisor recommends by EV alone (it ignores bankroll/limits). Don't flag a
+  // "deviation" toward a move the player can't actually make here — e.g. it says
+  // double/split but the bankroll or re-split cap forbids it. hit/stand are always
+  // available during the player's turn, so only the optional moves need this check.
+  if (best === 'double' && !canDouble(game)) return null;
+  if (best === 'split' && !canSplit(game)) return null;
+  if (best === 'surrender' && !canSurrender(game)) return null;
+  return best;
 }
 
 function apply(game, action, value) {

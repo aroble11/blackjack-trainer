@@ -74,9 +74,14 @@ describe('shoe draw / reshuffle', () => {
     expect(needsReshuffle(shoe)).toBe(true);
   });
 
-  it('always reshuffles when continuousShuffle is on', () => {
-    const shoe = createShoe({ shoe: { continuousShuffle: true } }, { cards: parseCards(['AS', 'KH']) });
-    expect(needsReshuffle(shoe)).toBe(true);
+  it('ignores continuousShuffle (unimplemented) and reshuffles by penetration', () => {
+    // CSM is not implemented; the flag must NOT force a reshuffle — penetration
+    // governs, exactly like a normal shoe (see the capability guard + README).
+    const cards = parseCards(['AS', 'KH', '2S', '3H', '4D', '5C', '6S', '7H', '8D', '9C']);
+    const shoe = createShoe({ shoe: { continuousShuffle: true, penetration: 0.5 } }, { cards }); // cutIndex = 5
+    expect(needsReshuffle(shoe)).toBe(false); // fresh shoe, below the cut card
+    for (let i = 0; i < 5; i++) draw(shoe); // pos = 5
+    expect(needsReshuffle(shoe)).toBe(true); // only now, at the cut
   });
 
   it('reshuffle resets the pointer and keeps the multiset', () => {
