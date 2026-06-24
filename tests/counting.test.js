@@ -84,12 +84,21 @@ describe('counts cards as the player sees them', () => {
     expect(running(g)).toBe(-3); // hole K (−1) now counted
   });
 
-  it('counts the hole immediately when a natural ends the round', () => {
+  it('counts the hole immediately when a player natural ends the round', () => {
     const g = dealt(rules, ['AS', '9D', 'KH', '5C']); // player A,K = blackjack ; D 9, hole 5
     expect(g.phase).toBe(Phase.RoundOver);
     expect(g.dealerHoleRevealed).toBe(true);
     // A(−1) + 9(0) + K(−1) + hole 5(+1) = −1
     expect(running(g)).toBe(-1);
+  });
+
+  it('counts the hole on a dealer blackjack (the peek reveals it)', () => {
+    const g = dealt(rules, ['9S', 'AD', '9H', 'KC']); // dealer A,K = blackjack ; player 18
+    expect(g.phase).toBe(Phase.RoundOver);
+    expect(g.dealerHoleRevealed).toBe(true);
+    expect(g.playerHands[0].outcome).toBe('lose');
+    // 9(0) + 9(0) + A(−1) + hole K(−1) = −2 (the hole counted via the peek reveal)
+    expect(running(g)).toBe(-2);
   });
 
   it('counts the hole when the player surrenders', () => {
