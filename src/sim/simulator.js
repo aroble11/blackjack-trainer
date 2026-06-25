@@ -32,6 +32,7 @@ import {
   activeHand,
   Phase,
 } from '../engine/game.js';
+import { cardsRemaining, reshuffle } from '../engine/shoe.js';
 import { bestAction } from '../teaching/advisor.js';
 import { handValue, isPair } from '../engine/hand.js';
 import { cardValue } from '../engine/cards.js';
@@ -128,7 +129,20 @@ export function runSession(rules, systemName, { handsPerSession = 100, rng = Mat
       break;
     }
     const before = game.bankrollCents;
-    playRound(game, decide);
+    try {
+      playRound(game, decide);
+    } catch (err) {
+      // The engine reshuffles only BETWEEN rounds, so on a small deck (1–2) a
+      // rare card-heavy split round can draw past the end of the shoe. Treat that
+      // as the shoe boundary: void the partial hand (restore the stake), reshuffle,
+      // and play on. Impossible with the default multi-deck shoe — its post-cut
+      // buffer dwarfs any single round — so normal runs never take this path.
+      if (cardsRemaining(game.shoe) > 0) throw err; // not exhaustion -> a real error
+      game.bankrollCents = before;
+      reshuffle(game.shoe);
+      nextRound(game);
+      continue;
+    }
     system.settle(game.bankrollCents - before);
     nextRound(game);
     handsPlayed++;

@@ -60,6 +60,43 @@ describe('runSimulation — betting-system behavior', () => {
   });
 });
 
+describe('runSimulation — robust across configs', () => {
+  // Different deck counts and rule sets must all complete cleanly: the engine
+  // reshuffles only between rounds, and the simulator's safety net handles the
+  // rare small-deck mid-round shoe exhaustion instead of throwing.
+  const variants = {
+    'single deck': withRules({ shoe: { numberOfDecks: 1 } }),
+    'double deck H17 6:5': withRules({
+      shoe: { numberOfDecks: 2 },
+      dealer: { hitsSoft17: true },
+      payouts: { blackjack: 1.2, insurance: 2.0, regularWin: 1.0 },
+    }),
+    'no double / split / surrender': withRules({
+      player: { doubleAllowed: false, splitAllowed: false, surrender: 'none' },
+    }),
+    'insurance offered': withRules({ player: { insuranceAllowed: true } }),
+  };
+
+  for (const [name, variant] of Object.entries(variants)) {
+    it(`completes cleanly with ${name}`, () => {
+      const r = runSimulation(variant, { system: 'martingale', sessions: 300, handsPerSession: 80, seed: 8 });
+      expect(r.count).toBe(300);
+      expect(Number.isFinite(r.meanCents)).toBe(true);
+      expect(r.pctUp + r.pctDown + r.pctFlat).toBeCloseTo(1, 10);
+    });
+  }
+
+  it('survives a deep-penetration single deck that exhausts mid-round (safety net)', () => {
+    // cut at ~46/52 leaves rounds starting with as few as 7 cards, so card-heavy
+    // rounds run the shoe dry mid-hand. Without the safety net this throws.
+    const extreme = withRules({ shoe: { numberOfDecks: 1, penetration: 0.9 } });
+    const r = runSimulation(extreme, { system: 'martingale', sessions: 150, handsPerSession: 80, seed: 3 });
+    expect(r.count).toBe(150);
+    expect(Number.isFinite(r.meanCents)).toBe(true);
+    expect(r.pctUp + r.pctDown + r.pctFlat).toBeCloseTo(1, 10);
+  });
+});
+
 describe('runSession', () => {
   it('plays up to the hand cap and reports a coherent net result', () => {
     const r = runSession(rules, 'flat', { handsPerSession: 30, rng: () => 0.42 });
