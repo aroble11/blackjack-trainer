@@ -18,8 +18,9 @@ async function start() {
   // Restore bankroll + settings from a previous session, if any.
   const persisted = await loadPersisted();
   if (persisted && typeof persisted === 'object') {
-    // Guard against corrupt/tampered data: a finite, non-negative bankroll only.
-    if (Number.isFinite(persisted.bankrollCents) && persisted.bankrollCents >= 0) {
+    // Guard against corrupt/tampered data: only a non-negative INTEGER number of
+    // cents (money is integer cents everywhere — never let storage break that).
+    if (Number.isInteger(persisted.bankrollCents) && persisted.bankrollCents >= 0) {
       game.bankrollCents = persisted.bankrollCents;
     }
     if (persisted.settings && typeof persisted.settings === 'object') {
