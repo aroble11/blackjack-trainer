@@ -5,11 +5,12 @@ for mobile (Android Chrome; iOS Safari supported). Personal learning tool — ch
 only, no real money. The full vision and phase plan live in
 [`blackjack-trainer-spec.md`](blackjack-trainer-spec.md).
 
-**Status: Phases 1–4 complete** — a correct, unit-tested game of blackjack with a
+**Status: Phases 1–5 complete** — a correct, unit-tested game of blackjack with a
 mobile-first UI, SVG cards & chips, animations, synthesized sound, saved progress,
-a **computed basic-strategy advisor** (tap-to-reveal hints with explanations), and a
-**live Hi-Lo card-counting readout** as the shoe depletes. The betting simulator is a
-later phase (see [Roadmap](#roadmap)).
+a **computed basic-strategy advisor** (tap-to-reveal hints with explanations), a
+**live Hi-Lo card-counting readout** as the shoe depletes, and a **Monte Carlo
+betting-system simulator** that charts thousands of sessions. Only Phase 6 (hosting +
+real-device install) remains (see [Roadmap](#roadmap)).
 
 ## Quick start
 
@@ -132,6 +133,21 @@ when `shoe.continuousShuffle` is on. Only Hi-Lo is implemented — the startup
 capability guard warns if another `teaching.countingSystem` is configured and falls
 back to Hi-Lo.
 
+## Betting simulator
+
+Tap **📊** in the top bar to open the simulator. Pick a **betting system**
+(Martingale or a flat-bet control), how many **sessions** to run, and how many
+**hands** each, then **Run**. It plays thousands of sessions headlessly through the
+real game engine — every hand by basic strategy, the system only choosing the bet —
+and charts the **distribution of final profit/loss**, with summary stats (mean,
+median, ruin rate, best/worst).
+
+It makes the Martingale trap vivid: *most* sessions win a little (a positive
+**median**), but a large share **bust the whole bankroll** (the spike at the left,
+e.g. −$500), so the **mean** still loses — and worse than flat betting. The table
+maximum (`table.maxBet`) caps the doubling. Each run is a fresh Monte Carlo draw, so
+numbers vary run to run. It simulates your configured rules, shown in the header.
+
 ## Installing on a phone (Phase 6)
 
 A PWA's install + offline features require **HTTPS** (only `localhost` is exempt),
@@ -165,5 +181,5 @@ anchors). Money is tracked in **integer cents** to avoid floating-point drift.
 | **2 (done)** | SVG cards/chips, deal/chip/shuffle animations, synthesized sound, IndexedDB persistence |
 | **3 (done)** | Computed basic-strategy advisor with tap-to-reveal hints + explanations |
 | **4 (done)** | Hi-Lo running/true count as the shoe depletes |
-| 5 | Betting-system simulator (e.g. Martingale) with outcome charts |
+| **5 (done)** | Betting-system simulator (Martingale + flat) with outcome charts |
 | 6 | Host over HTTPS; verify install + offline on real Android & iOS |

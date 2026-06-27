@@ -23,6 +23,8 @@ import {
 import { bestAction } from '../teaching/advisor.js';
 import { explainAction } from '../teaching/explain.js';
 import { countFromShoe } from '../teaching/counting.js';
+import { buildHistogram } from '../sim/histogram.js';
+import { BETTING_SYSTEMS } from '../sim/betting-systems.js';
 
 const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
@@ -267,7 +269,94 @@ function renderCount(g) {
     </div>`;
 }
 
+// ── betting simulator screen (Phase 5) ───────────────────────────────────────
+const pct = (x) => Math.round(x * 100) + '%';
+const fmtMoneySigned = (cents) => (cents < 0 ? '−' : '') + formatMoney(Math.abs(Math.round(cents)));
+
+/** An SVG histogram of the per-session P&L distribution, themed via CSS vars. */
+function histogramSvg(r) {
+  const { bins, maxCount, lo, hi } = buildHistogram(r.nets, 29);
+  if (!bins.length) return '';
+  const W = 360, H = 200, padL = 8, padR = 8, padT = 10, padB = 26;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const barW = chartW / bins.length;
+  const xFor = (cents) => padL + (hi === lo ? 0 : ((cents - lo) / (hi - lo)) * chartW);
+
+  const bars = bins
+    .map((b, i) => {
+      const h = maxCount ? (b.count / maxCount) * chartH : 0;
+      const x = padL + i * barW;
+      const y = padT + chartH - h;
+      const fill = (b.lo + b.hi) / 2 < 0 ? 'var(--lose)' : 'var(--win)';
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0.6, barW - 1).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${fill}"/>`;
+    })
+    .join('');
+
+  // Dashed reference line + label at $0, when the range straddles it.
+  let zero = '';
+  if (lo < 0 && hi > 0) {
+    const zx = xFor(0).toFixed(1);
+    zero =
+      `<line x1="${zx}" y1="${padT}" x2="${zx}" y2="${padT + chartH}" stroke="var(--paper)" stroke-opacity="0.5" stroke-dasharray="3 3"/>` +
+      `<text x="${zx}" y="${H - padB + 15}" text-anchor="middle" class="sim-axis">$0</text>`;
+  }
+  const axis =
+    `<text x="${padL}" y="${H - padB + 15}" text-anchor="start" class="sim-axis">${fmtMoneySigned(lo)}</text>` +
+    `<text x="${W - padR}" y="${H - padB + 15}" text-anchor="end" class="sim-axis">${fmtMoneySigned(hi)}</text>`;
+
+  return `<svg class="sim-hist" viewBox="0 0 ${W} ${H}" role="img" aria-label="Session profit-and-loss distribution">${bars}${zero}${axis}</svg>`;
+}
+
+function renderSimResult(r, rules) {
+  const stat = (label, val, cls = '') =>
+    `<div class="sim-stat"><span class="sim-stat-val ${cls}">${val}</span><span class="sim-stat-label">${label}</span></div>`;
+  return `
+    <div class="sim-stats">
+      ${stat('Mean', fmtMoneySigned(r.meanCents), signClass(r.meanCents))}
+      ${stat('Median', fmtMoneySigned(r.medianCents), signClass(r.medianCents))}
+      ${stat('Ruined', pct(r.ruinRate), r.ruinRate > 0 ? 'neg' : '')}
+      ${stat('Best', fmtMoneySigned(r.bestCents), 'pos')}
+      ${stat('Worst', fmtMoneySigned(r.worstCents), 'neg')}
+    </div>
+    ${histogramSvg(r)}
+    <p class="sim-caption">${r.count.toLocaleString()} sessions of ${r.handsPerSession} hands from $${rules.table.startingBankroll}. ${pct(r.pctUp)} finished ahead, ${pct(r.pctDown)} behind. Bars left of the $0 line are losing sessions.</p>`;
+}
+
+function renderSimulator(g, options) {
+  const sim = options.ui?.sim || {};
+  const opt = (action, value, current, label) =>
+    `<button class="btn sim-opt ${value == current ? 'on' : ''}" data-action="${action}" data-value="${value}">${label}</button>`;
+  const systems = Object.entries(BETTING_SYSTEMS).map(([key, s]) => opt('simSystem', key, sim.system, s.label));
+  const body = sim.running
+    ? `<div class="sim-status">Running ${Number(sim.sessions).toLocaleString()} sessions…</div>`
+    : sim.result
+      ? renderSimResult(sim.result, g.rules)
+      : '<div class="sim-status muted">Pick a system and run a simulation to see the outcome distribution.</div>';
+
+  return `<div class="game sim-view">
+      <header class="topbar">
+        <button class="btn icon" data-action="closeSim" aria-label="Back to the table" title="Back to the table">←</button>
+        <span class="sim-title">Betting Simulator</span>
+        <span class="rules-chip">${rulesChip(g.rules)}</span>
+      </header>
+      <div class="sim-scroll">
+        <div class="sim-controls">
+          <div class="sim-row"><span class="sim-label">System</span>${systems.join('')}</div>
+          <div class="sim-row"><span class="sim-label">Sessions</span>${[1000, 2000, 5000].map((v) => opt('simSessions', v, sim.sessions, v.toLocaleString())).join('')}</div>
+          <div class="sim-row"><span class="sim-label">Hands each</span>${[50, 100, 200].map((v) => opt('simHands', v, sim.hands, v)).join('')}</div>
+          <button class="btn primary sim-run" data-action="runSim"${sim.running ? ' disabled' : ''}>Run simulation</button>
+        </div>
+        ${body}
+      </div>
+    </div>`;
+}
+
 export function render(root, g, options = {}) {
+  if (options.ui?.view === 'sim') {
+    root.innerHTML = renderSimulator(g, options);
+    return;
+  }
   const warnings = options.warnings ?? [];
   const muted = options.settings?.muted ?? false;
   root.innerHTML = `<div class="game">
@@ -275,6 +364,7 @@ export function render(root, g, options = {}) {
         <span class="bankroll">${formatMoney(g.bankrollCents)}</span>
         <span class="topbar-actions">
           <span class="rules-chip">${rulesChip(g.rules)}</span>
+          <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">📊</button>
           <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${muted ? '🔇' : '🔊'}</button>
           ${
             g.phase === Phase.Betting

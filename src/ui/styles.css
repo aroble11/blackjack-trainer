@@ -140,6 +140,128 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── betting simulator screen (Phase 5) ──────────────────────────────────── */
+.sim-title {
+  flex: 1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sim-view .topbar {
+  gap: 0.5rem;
+}
+
+.sim-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.sim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sim-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sim-label {
+  flex: 0 0 4.6rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+.btn.sim-opt {
+  min-height: 42px;
+  font-size: 0.9rem;
+}
+
+.btn.sim-opt.on {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--gold);
+}
+
+.sim-run {
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.sim-status {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  font-weight: 600;
+}
+
+.sim-status.muted {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.sim-stats {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sim-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.45rem 0.2rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sim-stat-val {
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sim-stat-val.pos {
+  color: var(--win);
+}
+.sim-stat-val.neg {
+  color: var(--lose);
+}
+
+.sim-stat-label {
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.sim-hist {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.sim-hist text.sim-axis {
+  fill: var(--paper);
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.sim-caption {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  opacity: 0.7;
+}
+
 /* ── table ───────────────────────────────────────────────────────────────── */
 .table-area {
   flex: 1;

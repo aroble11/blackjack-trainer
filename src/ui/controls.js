@@ -36,10 +36,16 @@ import {
   resetBankroll,
 } from '../engine/game.js';
 import { bestAction } from '../teaching/advisor.js';
+import { runSimulation } from '../sim/simulator.js';
 
 export function mount(root, game, options = {}) {
   const { persist, settings } = options;
-  const ui = (options.ui = options.ui || { hintShown: false, deviation: null });
+  const ui = (options.ui = options.ui || {
+    hintShown: false,
+    deviation: null,
+    view: 'table',
+    sim: { system: 'martingale', sessions: 2000, hands: 100, result: null, running: false },
+  });
 
   root.addEventListener('click', (event) => {
     const el = event.target.closest('[data-action]');
@@ -61,6 +67,32 @@ export function mount(root, game, options = {}) {
       }
       if (persist) persist();
       render(root, game, options);
+      return;
+    }
+
+    // ── betting simulator (UI-only state; never touches the live game) ────────
+    if (action === 'openSim') { ui.view = 'sim'; render(root, game, options); return; }
+    if (action === 'closeSim') { ui.view = 'table'; render(root, game, options); return; }
+    if (action === 'simSystem') { ui.sim.system = el.dataset.value; render(root, game, options); return; }
+    if (action === 'simSessions') { ui.sim.sessions = Number(el.dataset.value); render(root, game, options); return; }
+    if (action === 'simHands') { ui.sim.hands = Number(el.dataset.value); render(root, game, options); return; }
+    if (action === 'runSim') {
+      if (ui.sim.running) return;
+      ui.sim.running = true;
+      render(root, game, options); // paint the "Running…" state first
+      // Defer the blocking run so the spinner paints before the main thread locks.
+      setTimeout(() => {
+        try {
+          ui.sim.result = runSimulation(game.rules, {
+            system: ui.sim.system,
+            sessions: ui.sim.sessions,
+            handsPerSession: ui.sim.hands,
+          });
+        } finally {
+          ui.sim.running = false;
+          render(root, game, options);
+        }
+      }, 24);
       return;
     }
 
