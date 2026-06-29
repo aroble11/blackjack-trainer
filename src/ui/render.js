@@ -57,13 +57,18 @@ function chipBreakdown(cents, denomsDesc) {
   return out;
 }
 
-function totalLabel(cards) {
+function totalLabel(cards, options) {
   const { total, soft } = handValue(cards);
   if (total > 21) return `${total} · bust`;
-  return soft ? `${total} · soft` : `${total}`;
+  if (soft) {
+    return options?.settings?.softDisplayBothValues
+      ? `${total - 10} or ${total} · soft`
+      : `${total} · soft`;
+  }
+  return `${total}`;
 }
 
-function renderDealer(g) {
+function renderDealer(g, options) {
   if (g.dealerCards.length === 0) shownDealer = 0; // new round
   const hidden = !g.dealerHoleRevealed && g.dealerCards.length > 0;
   let cardsHtml = '';
@@ -81,7 +86,7 @@ function renderDealer(g) {
   // hole card is down), matching how a real table reads.
   const visible = hidden ? [g.dealerCards[0]] : g.dealerCards;
   const bubble = g.dealerCards.length
-    ? `<div class="total-bubble dealer">${totalLabel(visible)}</div>`
+    ? `<div class="total-bubble dealer">${totalLabel(visible, options)}</div>`
     : '';
   return `<section class="dealer-area" aria-label="Dealer hand">
       ${bubble}
@@ -118,7 +123,7 @@ function renderStake(g, cents) {
     </div>`;
 }
 
-function renderPlayerHand(g, hand, index) {
+function renderPlayerHand(g, hand, index, options) {
   const active = g.phase === Phase.PlayerTurn && index === g.activeHandIndex;
   const shown = shownByHand.get(hand); // Set of card objects shown last render, or undefined
   let newOrder = 0; // stagger index among only the newly-dealt cards
@@ -135,19 +140,19 @@ function renderPlayerHand(g, hand, index) {
   return `<div class="hand-block ${active ? 'active' : ''}">
       <div class="hand">${cardsHtml}</div>
       <div class="hand-meta">
-        <span class="total-bubble player">${totalLabel(hand.cards)}</span>
+        <span class="total-bubble player">${totalLabel(hand.cards, options)}</span>
         ${badge}
       </div>
       ${renderStake(g, hand.stakeCents)}
     </div>`;
 }
 
-function renderPlayer(g) {
+function renderPlayer(g, options) {
   if (!g.playerHands.length) {
     const prompt = g.phase === Phase.Betting ? '<div class="place-bet">Place Your Bet</div>' : '';
     return `<section class="player-area" aria-label="Your hand">${prompt}</section>`;
   }
-  const body = g.playerHands.map((h, i) => renderPlayerHand(g, h, i)).join('');
+  const body = g.playerHands.map((h, i) => renderPlayerHand(g, h, i, options)).join('');
   return `<section class="player-area" aria-label="Your hand">${body}</section>`;
 }
 
@@ -177,6 +182,20 @@ function hintFab(g) {
 // Circular surrender button, stacked above the hint lightbulb.
 function surrenderFab() {
   return `<button class="btn icon surrender-fab" data-action="surrender" aria-label="Surrender" title="Surrender">🏳️</button>`;
+}
+
+function renderSettingsPanel(options) {
+  const on = options.settings?.softDisplayBothValues ?? false;
+  return `<div class="settings-panel">
+      <div class="settings-row">
+        <span class="settings-label">Alternate soft value</span>
+        <button class="settings-toggle${on ? ' on' : ''}" data-action="toggleSoftDisplay"
+                role="switch" aria-checked="${on}">
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+      <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
+    </div>`;
 }
 
 // The revealed hint panel (shown only after the lightbulb is tapped).
@@ -457,6 +476,7 @@ export function render(root, g, options = {}) {
   }
   const warnings = options.warnings ?? [];
   const muted = options.settings?.muted ?? false;
+  const settingsShown = options.ui?.settingsShown ?? false;
   root.innerHTML = `<div class="game">
       <header class="topbar">
         <span class="bankroll">${formatMoney(g.bankrollCents)}</span>
@@ -464,6 +484,7 @@ export function render(root, g, options = {}) {
           <span class="rules-chip">${rulesChip(g.rules)}</span>
           <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">📊</button>
           <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${muted ? '🔇' : '🔊'}</button>
+          <button class="btn icon" data-action="openSettings" aria-label="Settings" title="Settings">⚙️</button>
           ${
             g.phase === Phase.Betting
               ? '<button class="btn icon" data-action="reset" aria-label="Reset bankroll" title="Reset bankroll">↺</button>'
@@ -471,6 +492,8 @@ export function render(root, g, options = {}) {
           }
         </span>
       </header>
+      ${settingsShown ? '<div class="settings-backdrop" data-action="closeSettings"></div>' : ''}
+      ${settingsShown ? renderSettingsPanel(options) : ''}
       ${renderCount(g)}
       ${
         options.ui?.deviation
@@ -478,9 +501,9 @@ export function render(root, g, options = {}) {
           : ''
       }
       <div class="table-area">
-        ${renderDealer(g)}
+        ${renderDealer(g, options)}
         ${g.phase === Phase.RoundOver ? renderResultOverlay(g) : feltBranding(g.rules)}
-        ${renderPlayer(g)}
+        ${renderPlayer(g, options)}
       </div>
       ${renderControls(g, options)}
       ${g.justReshuffled ? '<div class="toast" role="status">Shuffling…</div>' : ''}

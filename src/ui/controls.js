@@ -44,6 +44,7 @@ export function mount(root, game, options = {}) {
     hintShown: false,
     deviation: null,
     view: 'table',
+    settingsShown: false,
     sim: { system: 'martingale', sessions: 2000, hands: 100, result: null, running: false },
   });
 
@@ -65,6 +66,23 @@ export function mount(root, game, options = {}) {
         settings.muted = !settings.muted;
         setMuted(settings.muted);
       }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+
+    if (action === 'openSettings') {
+      ui.settingsShown = !ui.settingsShown;
+      render(root, game, options);
+      return;
+    }
+    if (action === 'closeSettings') {
+      ui.settingsShown = false;
+      render(root, game, options);
+      return;
+    }
+    if (action === 'toggleSoftDisplay') {
+      if (settings) settings.softDisplayBothValues = !settings.softDisplayBothValues;
       if (persist) persist();
       render(root, game, options);
       return;

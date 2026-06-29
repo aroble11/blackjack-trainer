@@ -13,7 +13,7 @@ warnings.forEach((w) => console.warn('[config] ' + w));
 
 async function start() {
   const game = createGame(RULES);
-  const settings = { muted: false };
+  const settings = { muted: false, softDisplayBothValues: false };
 
   // Restore bankroll + settings from a previous session, if any.
   const persisted = await loadPersisted();
