@@ -63,6 +63,7 @@ them**, rather than silently mis-playing:
 | `shoe.continuousShuffle` | falls back to penetration-based reshuffle |
 | `dealer.peeksForBlackjack: false` (European) | falls back to US peek |
 | `player.resplitAces`, `player.hitSplitAces` | split aces always get one card |
+| `teaching.countingSystem` ≠ `'hi-lo'` | the count readout falls back to Hi-Lo |
 
 The **bankroll and mute setting persist** across sessions via IndexedDB (an
 interrupted hand is voided, not charged, on reload). Use the topbar **↺** to reset
@@ -79,7 +80,10 @@ src/
   assets/      the swappable look + sound: theme.js (palette) · svg.js (cards/chips)
                · sound.js (Web Audio effects)
   persistence/ store.js (tiny IndexedDB key/value) · persist.js (bankroll + settings)
-  teaching/    computed basic strategy: probabilities · dealer-odds · ev · advisor · explain
+  teaching/    computed basic strategy + Hi-Lo counting: probabilities · dealer-odds ·
+               ev · advisor · explain · counting
+  sim/         headless Monte Carlo betting simulator: betting-systems · simulator ·
+               histogram (+ a seeded rng)
   ui/          DOM rendering (render.js) + input/audio wiring (controls.js)
   main.js      bootstrap: config -> guard -> load -> game -> mount
 tests/     vitest engine tests (one file per module)
@@ -165,8 +169,9 @@ full app shell.
 
 `npm test` covers the engine's edge cases (multi-ace soft totals, blackjack vs. a
 plain 21, split aces, double-after-split, bust/push, dealer H17 vs. S17, peek, 3:2 /
-6:5 payouts) and the strategy engine (dealer odds + the decision table vs. canonical
-anchors). Money is tracked in **integer cents** to avoid floating-point drift.
+6:5 payouts), the strategy engine (dealer odds + the decision table vs. canonical
+anchors), the Hi-Lo counting math, and the betting simulator. Money is tracked in
+**integer cents** to avoid floating-point drift.
 
 > The strategy advisor is **computed and validated**, but still **cross-check it
 > against an authoritative chart** for your exact ruleset before relying on the
