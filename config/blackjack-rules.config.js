@@ -119,6 +119,7 @@ export const RULES = {
     maxBet: 500,                     // table maximum — the Martingale ceiling
     startingBankroll: 500,           // chips you begin a session with
     chipDenominations: [5, 25, 100, 500], // which chip values the UI shows
+    name: 'BLACKJACK',               // table name printed on the felt (purely cosmetic)
   },
 
   // ── TEACHING / APP BEHAVIOR ───────────────────────────────────────────────

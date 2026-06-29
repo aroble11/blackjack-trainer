@@ -67,7 +67,6 @@ function renderDealer(g) {
   if (g.dealerCards.length === 0) shownDealer = 0; // new round
   const hidden = !g.dealerHoleRevealed && g.dealerCards.length > 0;
   let cardsHtml = '';
-  let totalHtml = '';
   if (hidden) {
     cardsHtml =
       cardSlot(cardFront(g.dealerCards[0]), shownDealer <= 0, 0 - shownDealer) +
@@ -76,11 +75,16 @@ function renderDealer(g) {
     cardsHtml = g.dealerCards
       .map((c, i) => cardSlot(cardFront(c), i >= shownDealer, i - shownDealer))
       .join('');
-    totalHtml = `<span class="total">${totalLabel(g.dealerCards)}</span>`;
   }
   shownDealer = g.dealerCards.length;
-  return `<section class="dealer-area">
-      <h2 class="area-label">Dealer ${totalHtml}</h2>
+  // Bubble shows the value of the dealer's *visible* cards (upcard only while the
+  // hole card is down), matching how a real table reads.
+  const visible = hidden ? [g.dealerCards[0]] : g.dealerCards;
+  const bubble = g.dealerCards.length
+    ? `<div class="total-bubble dealer">${totalLabel(visible)}</div>`
+    : '';
+  return `<section class="dealer-area" aria-label="Dealer hand">
+      ${bubble}
       <div class="hand">${cardsHtml}</div>
     </section>`;
 }
@@ -101,6 +105,19 @@ const ACTION_LABEL = {
   surrender: 'Surrender',
 };
 
+/** The hand's wager as a small chip stack + amount, shown under the cards. */
+function renderStake(g, cents) {
+  if (!cents) return '';
+  const denomsDesc = [...g.rules.table.chipDenominations].sort((a, b) => b - a);
+  const chips = chipBreakdown(cents, denomsDesc)
+    .map((v) => `<span class="stack-chip">${chipSvg(v)}</span>`)
+    .join('');
+  return `<div class="hand-stake">
+      <span class="bet-stack">${chips}</span>
+      <span class="stake-amt">${formatMoney(cents)}</span>
+    </div>`;
+}
+
 function renderPlayerHand(g, hand, index) {
   const active = g.phase === Phase.PlayerTurn && index === g.activeHandIndex;
   const shown = shownByHand.get(hand); // Set of card objects shown last render, or undefined
@@ -118,18 +135,20 @@ function renderPlayerHand(g, hand, index) {
   return `<div class="hand-block ${active ? 'active' : ''}">
       <div class="hand">${cardsHtml}</div>
       <div class="hand-meta">
-        <span class="total">${totalLabel(hand.cards)}</span>
-        <span class="stake">${formatMoney(hand.stakeCents)}</span>
+        <span class="total-bubble player">${totalLabel(hand.cards)}</span>
         ${badge}
       </div>
+      ${renderStake(g, hand.stakeCents)}
     </div>`;
 }
 
 function renderPlayer(g) {
-  const body = g.playerHands.length
-    ? g.playerHands.map((h, i) => renderPlayerHand(g, h, i)).join('')
-    : '<div class="hand-block empty">Place a bet, then deal.</div>';
-  return `<section class="player-area"><h2 class="area-label">You</h2>${body}</section>`;
+  if (!g.playerHands.length) {
+    const prompt = g.phase === Phase.Betting ? '<div class="place-bet">Place Your Bet</div>' : '';
+    return `<section class="player-area" aria-label="Your hand">${prompt}</section>`;
+  }
+  const body = g.playerHands.map((h, i) => renderPlayerHand(g, h, i)).join('');
+  return `<section class="player-area" aria-label="Your hand">${body}</section>`;
 }
 
 function btn(action, label, { disabled = false, value, cls = '' } = {}) {
@@ -149,12 +168,21 @@ function renderBetStack(g) {
   return `<div class="bet-stack${grew ? ' grew' : ''}">${chips}</div>`;
 }
 
-function renderHint(g, options) {
+// The floating lightbulb that toggles the hint; only when hints are enabled.
+function hintFab(g) {
+  if (!g.rules.teaching?.showBasicStrategyHints) return '';
+  return `<button class="btn icon hint-fab" data-action="hint" aria-label="Basic-strategy hint" title="Basic-strategy hint">💡</button>`;
+}
+
+// Circular surrender button, stacked above the hint lightbulb.
+function surrenderFab() {
+  return `<button class="btn icon surrender-fab" data-action="surrender" aria-label="Surrender" title="Surrender">🏳️</button>`;
+}
+
+// The revealed hint panel (shown only after the lightbulb is tapped).
+function renderHintPanel(g, options) {
   const teaching = g.rules.teaching || {};
-  if (!teaching.showBasicStrategyHints) return '';
-  if (!options.ui?.hintShown) {
-    return `<button class="btn hint-toggle" data-action="hint">💡 Show basic-strategy hint</button>`;
-  }
+  if (!teaching.showBasicStrategyHints || !options.ui?.hintShown) return '';
   const hand = activeHand(g);
   if (!hand || !g.dealerCards[0]) return '';
   const rec = bestAction(hand.cards, g.dealerCards[0], g.rules, { fromSplit: hand.fromSplit });
@@ -166,6 +194,22 @@ function renderHint(g, options) {
       ${why}
       <p class="hint-caveat">Computed from your rules — cross-check an authoritative chart for the closest calls.</p>
     </div>`;
+}
+
+// Icon + color treatment for each player action button.
+const ACTION_META = {
+  stand: { icon: '✋', label: 'Stand', cls: 'act-stand' },
+  split: { icon: '✂️', label: 'Split', cls: 'act-split' },
+  double: { icon: '⏬', label: 'Double', cls: 'act-double' },
+  hit: { icon: '⬇️', label: 'Hit', cls: 'act-hit' },
+};
+
+function actionBtn(action, disabled) {
+  const m = ACTION_META[action];
+  return `<button class="btn action ${m.cls}" data-action="${action}"${disabled ? ' disabled' : ''}>
+      <span class="act-icon" aria-hidden="true">${m.icon}</span>
+      <span class="act-label">${m.label}</span>
+    </button>`;
 }
 
 function renderControls(g, options) {
@@ -190,8 +234,8 @@ function renderControls(g, options) {
         ${renderBetStack(g)}
         <div class="bet-row">
           <span class="bet-amount">Bet ${formatMoney(g.betCents)}</span>
-          ${btn('clearBet', 'Clear', { disabled: g.betCents === 0 })}
-          ${btn('deal', 'Deal', { disabled: !canDeal(g), cls: 'primary' })}
+          ${btn('clearBet', 'Clear', { disabled: g.betCents === 0, cls: 'btn-clear' })}
+          ${btn('deal', 'Deal', { disabled: !canDeal(g), cls: 'btn-deal' })}
         </div>
       </footer>`;
   }
@@ -207,14 +251,15 @@ function renderControls(g, options) {
 
   if (g.phase === Phase.PlayerTurn) {
     return `<footer class="controls">
-        ${renderHint(g, options)}
+        ${renderHintPanel(g, options)}
         <div class="action-row">
-          ${btn('hit', 'Hit', { disabled: !canHit(g) })}
-          ${btn('stand', 'Stand', { disabled: !canStand(g) })}
-          ${btn('double', 'Double', { disabled: !canDouble(g) })}
-          ${btn('split', 'Split', { disabled: !canSplit(g) })}
-          ${canSurrender(g) ? btn('surrender', 'Surrender') : ''}
+          ${actionBtn('stand', !canStand(g))}
+          ${actionBtn('split', !canSplit(g))}
+          ${actionBtn('double', !canDouble(g))}
+          ${actionBtn('hit', !canHit(g))}
         </div>
+        ${canSurrender(g) ? surrenderFab() : ''}
+        ${hintFab(g)}
       </footer>`;
   }
 
@@ -222,6 +267,31 @@ function renderControls(g, options) {
   return `<footer class="controls">
       ${btn('next', 'Next hand', { cls: 'primary' })}
     </footer>`;
+}
+
+// Big center overlay shown at round-over. The headline is derived from the
+// engine's own settled figures (returnCents/stakeCents) — pure arithmetic on
+// what the engine computed, never a re-derivation of payout rules.
+function renderResultOverlay(g) {
+  const hands = g.playerHands;
+  if (!hands.length) return '';
+  const net = hands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0);
+  let cls, text, amount = '';
+  if (net > 0) {
+    cls = 'won';
+    text = hands.length === 1 && hands[0].outcome === 'blackjack' ? 'BLACKJACK!' : 'YOU WON';
+    amount = formatMoney(net);
+  } else if (net < 0) {
+    cls = 'lost';
+    text = hands.length === 1 && hands[0].outcome === 'surrender' ? 'SURRENDERED' : 'DEALER WINS';
+  } else {
+    cls = 'push';
+    text = 'PUSH';
+  }
+  return `<div class="result-overlay ${cls}" role="status">
+      <span class="result-text">${text}</span>
+      ${amount ? `<span class="result-amount">${amount}</span>` : ''}
+    </div>`;
 }
 
 function rulesChip(rules) {
@@ -232,6 +302,34 @@ function rulesChip(rules) {
         ? '6:5'
         : `${rules.payouts.blackjack}×`;
   return `${rules.shoe.numberOfDecks}D · ${rules.dealer.hitsSoft17 ? 'H17' : 'S17'} · ${pay}`;
+}
+
+// Curved branding "printed" on the felt — the table name plus the two headline
+// rules, all derived from config (never hardcoded), echoing the rulesChip logic.
+function feltBranding(rules) {
+  const name = rules.table?.name || '';
+  const pay =
+    rules.payouts.blackjack === 1.5
+      ? 'PAYS 3 TO 2'
+      : rules.payouts.blackjack === 1.2
+        ? 'PAYS 6 TO 5'
+        : `PAYS ${rules.payouts.blackjack}×`;
+  const dealerLine = rules.dealer.hitsSoft17 ? 'DEALER HITS SOFT 17' : 'DEALER STANDS ON SOFT 17';
+  const nameText = name
+    ? `<text class="brand-name"><textPath href="#brandArcName" startOffset="50%">${name}</textPath></text>`
+    : '';
+  return `<div class="felt-brand" aria-hidden="true">
+      <svg viewBox="0 0 320 96" class="felt-brand-svg" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <path id="brandArcName" d="M 66 16 Q 160 34 254 16" fill="none"/>
+          <path id="brandArcPay" d="M 16 48 Q 160 82 304 48" fill="none"/>
+          <path id="brandArcSub" d="M 44 72 Q 160 94 276 72" fill="none"/>
+        </defs>
+        ${nameText}
+        <text class="brand-pay"><textPath href="#brandArcPay" startOffset="50%">${pay}</textPath></text>
+        <text class="brand-sub"><textPath href="#brandArcSub" startOffset="50%">${dealerLine}</textPath></text>
+      </svg>
+    </div>`;
 }
 
 // ── card-counting readout (Phase 4) ─────────────────────────────────────────
@@ -381,8 +479,10 @@ export function render(root, g, options = {}) {
       }
       <div class="table-area">
         ${renderDealer(g)}
+        ${feltBranding(g.rules)}
         ${renderPlayer(g)}
       </div>
+      ${g.phase === Phase.RoundOver ? renderResultOverlay(g) : ''}
       ${renderControls(g, options)}
       ${g.justReshuffled ? '<div class="toast" role="status">Shuffling…</div>' : ''}
       ${

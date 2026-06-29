@@ -5,12 +5,15 @@ for mobile (Android Chrome; iOS Safari supported). Personal learning tool — ch
 only, no real money. The full vision and phase plan live in
 [`blackjack-trainer-spec.md`](blackjack-trainer-spec.md).
 
-**Status: Phases 1–5 complete** — a correct, unit-tested game of blackjack with a
-mobile-first UI, SVG cards & chips, animations, synthesized sound, saved progress,
-a **computed basic-strategy advisor** (tap-to-reveal hints with explanations), a
-**live Hi-Lo card-counting readout** as the shoe depletes, and a **Monte Carlo
-betting-system simulator** that charts thousands of sessions. Only Phase 6 (hosting +
-real-device install) remains (see [Roadmap](#roadmap)).
+**Status: Phases 1–5 + the Phase 7 casino-style redesign complete** — a correct,
+unit-tested game of blackjack with a mobile-first **casino-table UI** (felt with a
+wood rail, curved felt branding, realistic pip-layout cards & chips, hand-total
+bubbles, color-coded action buttons, and round-result overlays), animations,
+synthesized sound, saved progress, a **computed basic-strategy advisor**
+(tap-to-reveal hints with explanations), a **live Hi-Lo card-counting readout** as
+the shoe depletes, and a **Monte Carlo betting-system simulator** that charts
+thousands of sessions. Only Phase 6 (hosting + real-device install) remains (see
+[Roadmap](#roadmap)).
 
 ## Quick start
 
@@ -188,3 +191,4 @@ anchors), the Hi-Lo counting math, and the betting simulator. Money is tracked i
 | **4 (done)** | Hi-Lo running/true count as the shoe depletes |
 | **5 (done)** | Betting-system simulator (Martingale + flat) with outcome charts |
 | 6 | Host over HTTPS; verify install + offline on real Android & iOS |
+| **7 (done)** | Casino-table redesign: felt + wood rail, curved felt branding, pip-layout cards & court art, chip art, hand-total bubbles, color-coded action buttons, round-result overlays |
