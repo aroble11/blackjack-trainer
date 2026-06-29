@@ -482,25 +482,6 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 
-.total-bubble.dealer::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -7px;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--gold-dim);
-}
-
-.total-bubble.player::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -7px;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-bottom-color: var(--gold-dim);
-}
 
 /* The wager riding under each hand. */
 .hand-stake {
