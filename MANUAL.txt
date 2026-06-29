@@ -1,0 +1,513 @@
+==============================================================================
+
+                          B L A C K J A C K   T R A I N E R
+
+                            Instruction Manual  (v1)
+
+==============================================================================
+
+A pocket blackjack game that teaches you to play well. It runs entirely on your
+device (no internet needed once installed), uses chips only — never real money —
+and shows you the mathematically best move, a live card count, and a simulator
+that reveals how betting systems really behave.
+
+This manual is written for someone brand new to blackjack. If you already know
+the game, skim sections 1, 4, and 6-10.
+
+
+------------------------------------------------------------------------------
+  TABLE OF CONTENTS
+------------------------------------------------------------------------------
+
+   1.  About this game
+   2.  Quick start (your first hand)
+   3.  Blackjack basics
+   4.  The screen, at a glance
+   5.  Playing a round: the actions
+   6.  The basic-strategy advisor (the hint)
+   7.  Card counting (Hi-Lo)
+   8.  The betting simulator
+   9.  The rules this game uses
+  10.  Changing the rules
+  11.  Sound & motion
+  12.  Saving, resetting & running out of chips
+  13.  Glossary
+
+
+==============================================================================
+  1.  ABOUT THIS GAME
+==============================================================================
+
+This is a *trainer*, not a casino. The goal is to learn optimal blackjack and to
+understand betting and card-counting, with three teaching tools built in:
+
+   * A basic-strategy ADVISOR that tells you the best move and why.
+   * A live card COUNTER (Hi-Lo) as the cards come out.
+   * A betting SIMULATOR that runs thousands of sessions and charts the results.
+
+You play with chips. There is no real money and nothing to win or lose but
+bragging rights. Your chip balance ("bankroll") is saved on your device between
+sessions.
+
+
+==============================================================================
+  2.  QUICK START (YOUR FIRST HAND)
+==============================================================================
+
+   1. PLACE A BET. Tap the chip buttons at the bottom ($5, $25, $100, $500) to
+      stack up a wager, then tap DEAL. (Tap CLEAR to start the bet over.)
+
+   2. PLAY YOUR HAND. You and the dealer each get two cards; one of the dealer's
+      cards stays face-down. Try to get closer to 21 than the dealer WITHOUT
+      going over. Tap HIT to take a card or STAND to stop. (Double, Split, and
+      Surrender are explained in section 5.)
+
+   3. SEE THE RESULT. The dealer reveals the hidden card and plays out their
+      hand. A badge shows whether you Won, Lost, Pushed (tied), or hit Blackjack.
+      Tap NEXT HAND to play again.
+
+Stuck on a decision? Tap "Show basic-strategy hint" during your turn and the game
+will tell you the best play and explain it (see section 6).
+
+
+==============================================================================
+  3.  BLACKJACK BASICS
+==============================================================================
+
+THE GOAL
+   Beat the dealer's hand without your total going over 21. Going over 21 is a
+   "bust" and you lose immediately.
+
+CARD VALUES
+   * Number cards 2-10 are worth their number.
+   * Jack, Queen, King are each worth 10.
+   * An Ace is worth 11 OR 1 -- whichever helps you more.
+
+SOFT vs HARD HANDS
+   * A hand where an Ace is counted as 11 is "soft" (it can't bust on the next
+     card, because the Ace can drop to 1). Example: Ace + 6 = "soft 17".
+   * If there is no Ace, or the Ace must count as 1 to avoid busting, the hand is
+     "hard". Example: 10 + 7 = "hard 17".
+   The game labels your total as "· soft" when an Ace is still counting as 11.
+
+BLACKJACK (a "natural")
+   An Ace plus any 10-value card as your FIRST TWO cards = 21, called a
+   "blackjack" or "natural". It beats any other 21 and normally pays extra (3:2 —
+   see section 9). A 21 made from three or more cards, or after splitting, is just
+   "21", not a blackjack.
+
+PUSH
+   A tie with the dealer. Your bet is returned; nobody wins.
+
+HOW A ROUND PLAYS OUT
+   You act first. If you bust, you lose right away (the dealer need not draw).
+   If you stand, the dealer reveals the face-down card and draws until reaching at
+   least 17, then stops. Closest to 21 wins; equal totals push.
+
+
+==============================================================================
+  4.  THE SCREEN, AT A GLANCE
+==============================================================================
+
+The game is one tall screen, built for a phone. Here is the table during your
+turn:
+
+   +------------------------------------------------------------
+   |  $500       6D · S17 · 3:2        📊   🔊   ↺       <- top bar
+   +------------------------------------------------------------
+   |  HI-LO   Running +2   True +0.6   5.4 decks         <- count
+   +------------------------------------------------------------
+   |  DEALER  10
+   |     [ K♠ ]   [ ?? ]                       (hole card hidden)
+   |
+   |  YOU
+   |     [ 9♦ ]   [ 7♣ ]     16     $25
+   +------------------------------------------------------------
+   |  💡 Show basic-strategy hint
+   |  [ Hit ]  [ Stand ]  [ Double ]  [ Split ]  [ Surrender ]
+   +------------------------------------------------------------
+
+THE TOP BAR (always visible)
+   $500 ........ Your bankroll (chips on hand), in gold at the top-left.
+   6D · S17 · 3:2  The rules in force, in shorthand:
+                    6D  = six decks      S17 = dealer stands on soft 17
+                    3:2 = blackjack payout (see section 9 for all the shorthand).
+   📊 .......... Opens the BETTING SIMULATOR (section 8).
+   🔊 / 🔇 ..... Mute or un-mute sound effects.
+   ↺ ........... Reset your bankroll to the starting amount. (Shown only while
+                 betting, between hands.)
+
+THE COUNT READOUT (just under the top bar)
+   The live Hi-Lo card count: Running count, True count, and how many decks are
+   left in the shoe. Green means the count favors you, red means it favors the
+   house. Full details in section 7. (You can turn this off in the config.)
+
+THE TABLE
+   DEALER row .. The dealer's cards and their total. During your turn one card is
+                 face-down ([ ?? ]) and no total is shown yet.
+   YOU row ..... Your hand(s): the cards, the total (e.g. "16", "soft 18", or
+                 "20 · bust"), and the chips wagered on that hand. After a split
+                 you'll see more than one hand here; the one you're playing is
+                 highlighted. When a round ends, a result badge appears:
+                 Win, Lose, Push, Blackjack!, or Surrender.
+
+THE CONTROLS (bottom; they change with the moment)
+   While BETTING .... chip buttons, your bet stack, the bet amount, CLEAR, DEAL.
+   On a dealer Ace .. an insurance prompt: "Insure $X" or "No" (section 5).
+   During YOUR TURN . the hint button plus Hit / Stand / Double / Split /
+                      Surrender. A button is greyed out when that move isn't
+                      legal right now.
+   After the ROUND .. a single NEXT HAND button.
+
+POP-UP CUES
+   * "Shuffling…" appears briefly when the shoe is reshuffled.
+   * A "Config notes" panel appears only if the rules file asks for something this
+     version doesn't fully support (see section 10).
+
+
+==============================================================================
+  5.  PLAYING A ROUND: THE ACTIONS
+==============================================================================
+
+A round flows through stages: Betting -> (Insurance, if offered) -> Your turn ->
+Dealer's turn -> Result. Your options:
+
+HIT
+   Take another card. You can keep hitting until you stand or bust. Reaching 21
+   ends your turn automatically.
+
+STAND
+   Stop with your current total and pass play to the next hand (or the dealer).
+
+DOUBLE (down)
+   Offered only on your first two cards. You DOUBLE your wager and take EXACTLY
+   ONE more card, then your turn ends. Use it when one card is likely to win.
+   (Greyed out if you can't cover the extra chips.)
+
+SPLIT
+   Offered when your first two cards are a matching pair (any two 10-value cards
+   count, e.g. K + 10). It splits them into TWO separate hands, each getting a
+   second card and a matching wager. You play them one at a time. You may split
+   again up to a total of FOUR hands. Special case: split ACES get exactly ONE
+   card each and then stand. (Greyed out if you can't cover the extra wager or
+   you've reached the hand limit.)
+
+DOUBLE AFTER SPLIT
+   In this game you ARE allowed to double a hand that came from a split (often
+   written "DAS").
+
+SURRENDER (late surrender)
+   Offered as your very first action on a fresh two-card hand. You give up and
+   forfeit HALF your bet, ending the round. It's "late" surrender: it's offered
+   only after the dealer has checked for blackjack. Use it on truly hopeless hands
+   (the advisor will tell you which).
+
+INSURANCE
+   Offered the moment the dealer's up-card is an Ace, before you play. It's a side
+   bet of half your wager that the dealer has blackjack. If they do, insurance
+   pays 2:1 (you break even on the round); if they don't, you lose the side bet.
+   Basic strategy says to decline it unless you're counting — tap "No".
+
+A note on money: everything is chips. Your bet is taken when committed and paid
+back at settlement. Win pays even money (1:1), blackjack pays 3:2, a push returns
+your bet. If you can't even cover the table minimum, see section 12.
+
+
+==============================================================================
+  6.  THE BASIC-STRATEGY ADVISOR (THE HINT)
+==============================================================================
+
+During your turn, tap
+
+      💡 Show basic-strategy hint
+
+and the game shows the single best move, like:
+
+      Basic strategy: Stand
+      Standing (EV +0.15) beats hitting (-0.02) — the dealer's 6 busts about
+      42% of the time, so let them draw.
+      Computed from your rules — cross-check an authoritative chart for the
+      closest calls.
+
+If you then make a DIFFERENT move, a note flags it for that hand:
+
+      Basic strategy here was Stand
+
+HOW IT WORKS (and why you can trust it)
+   "Basic strategy" is the move that loses the least (or wins the most) on
+   average for a given hand vs. the dealer's up-card. This game does NOT look the
+   answer up in a memorized chart. Instead it COMPUTES it from your exact rules:
+
+      1. It builds the probability of each dealer final total from the up-card
+         (respecting whether the dealer hits or stands on soft 17, and the peek).
+      2. It works out the expected value (EV) of standing, hitting, doubling,
+         splitting, and surrendering.
+      3. It recommends the highest-EV legal move, and the explanation quotes those
+         real numbers and the dealer's bust chance.
+
+   Because it's computed, it automatically adapts if you change the rules (H17 vs
+   S17, double-after-split, surrender, the double restriction, and so on).
+
+   EV ("expected value") is measured in bets: +1.0 means you'd win one bet on
+   average, -1.0 means lose one, 0 is break-even.
+
+THE HONEST CAVEAT
+   For a handful of razor-close decisions (the classic example is Ace,2 vs a
+   dealer 5), the underlying math can land on the opposite side of some published
+   charts by a hair. For those edge cases, cross-check an authoritative
+   basic-strategy chart for your exact ruleset. The hint never replaces good
+   judgment on the knife-edge cells — but for the vast majority of hands it is
+   exactly right.
+
+   You can turn hints (and the explanations, and the deviation note) off in the
+   config: teaching.showBasicStrategyHints, explainHints, warnOnStrategyDeviation.
+
+
+==============================================================================
+  7.  CARD COUNTING (HI-LO)
+==============================================================================
+
+As cards appear, the readout under the top bar tracks the Hi-Lo count:
+
+      HI-LO    Running +2     True +0.6     5.4 decks
+
+WHAT THE NUMBERS MEAN
+   RUNNING count .. A running tally of the cards you've seen. Each card has a tag:
+
+                       2  3  4  5  6   ->  +1   (low cards: good for the dealer
+                                                 when gone, so seeing them is
+                                                 good for YOU)
+                       7  8  9         ->   0   (neutral)
+                       10 J Q K A      ->  -1   (high cards / Aces)
+
+                    You add the tags up as cards come out. A positive running
+                    count means lots of low cards have already been played, so
+                    the shoe is now rich in high cards — which favors the player.
+
+   TRUE count ..... The running count divided by the number of DECKS REMAINING:
+
+                       True = Running ÷ decks remaining
+
+                    This matters because a running count of +5 is a big edge with
+                    one deck left but small with six decks left. The true count
+                    normalizes for that.
+
+   decks remaining  How many decks' worth of cards are still in the shoe.
+
+COLOR
+   The values turn GREEN when the count favors the player and RED when it favors
+   the house, so you can read the situation at a glance.
+
+"COUNT AS YOU SEE THEM"
+   The game counts each card the instant you'd actually see it at a real table —
+   including the dealer's hidden card ONLY once it's turned face-up, never while
+   it's face-down. The count carries across hands and RESETS to zero whenever the
+   shoe is reshuffled (watch for the "Shuffling…" cue).
+
+WHAT TO DO WITH IT
+   Card counters bet MORE when the true count is high (the deck favors them) and
+   less when it's low. The betting simulator (section 8) does not use the count;
+   it's there to study betting systems. Counting here is for your own practice and
+   awareness.
+
+   This readout only appears for a normal depleting shoe. Only the Hi-Lo system is
+   built in. Toggle it with teaching.showCardCounting and showTrueCount.
+
+
+==============================================================================
+  8.  THE BETTING SIMULATOR
+==============================================================================
+
+Tap 📊 in the top bar to open the simulator, then ← to return to the table. The
+simulator answers a question: "If I used a betting system across many sessions,
+how would I actually do?"
+
+THE CONTROLS
+   System ...... Which betting system to test:
+                   * Martingale -- double your bet after every loss, drop back to
+                     the minimum after a win (and hold it after a push). Once a
+                     doubled bet would exceed the table maximum, it's capped
+                     there. The idea is that one win recovers all prior losses.
+                   * Flat -- bet the same amount every hand. This is the control
+                     to compare against.
+   Sessions .... How many separate sessions to simulate (1,000 / 2,000 / 5,000).
+   Hands each .. How many hands each session plays (50 / 100 / 200).
+   Run simulation  Starts the run; you'll briefly see "Running … sessions…".
+
+HOW IT WORKS
+   Each simulated session starts from the same bankroll and plays the chosen
+   number of hands using PERFECT basic strategy for the actual play decisions; the
+   betting system only decides HOW MUCH to wager each hand. Sessions end early if
+   they go broke ("ruin"). It runs through the real game engine, so the results
+   reflect this game's exact rules. Each run is a fresh random sample, so the
+   numbers shift a little from run to run.
+
+READING THE RESULTS
+   You get five summary numbers:
+      Mean ...... average profit/loss per session
+      Median .... the middle session (half did better, half worse)
+      Ruined .... percent of sessions that lost the entire bankroll
+      Best ...... the luckiest session's result
+      Worst ..... the worst session's result (often the full bankroll lost)
+
+   Below them is a HISTOGRAM — a bar chart of final profit/loss across all
+   sessions. Each bar is a money range; its height is how many sessions landed
+   there. Bars LEFT of the dashed "$0" line are losing sessions (red); bars right
+   are winning sessions (green).
+
+THE LESSON MARTINGALE TEACHES
+   Run Martingale and you'll typically see something striking: MOST sessions win
+   a little (a positive median, a tall cluster of small wins just right of $0) —
+   which is why the system feels like it works. But a large slice of sessions
+   (often a third or so) BUST THE ENTIRE BANKROLL: a tall red spike at the far
+   left (e.g. -$500). Those rare catastrophes outweigh the many small wins, so the
+   MEAN still loses — and loses MORE than simply betting flat. Switch the system
+   to Flat and the chart becomes a tight, roughly symmetric hump around a small
+   loss, with no ruin spike. That contrast is the whole point: no betting pattern
+   beats the house edge; it only reshapes how you lose.
+
+
+==============================================================================
+  9.  THE RULES THIS GAME USES
+==============================================================================
+
+These are the default rules (they can be changed — see section 10). The top-bar
+shorthand "6D · S17 · 3:2" summarizes the first three.
+
+SHOE
+   * Six decks, shuffled together.
+   * About 75% of the shoe is dealt before it reshuffles (the "penetration").
+
+DEALER
+   * Stands on all 17s, including soft 17 ("S17"). (The other common rule, where
+     the dealer hits soft 17, is written "H17".)
+   * Peeks for blackjack: if the up-card is an Ace or a ten, the dealer checks the
+     hidden card before you play. On a dealer blackjack the round ends at once and
+     you lose only your original bet (US style).
+
+PAYOUTS
+   * Blackjack pays 3:2 (a $10 blackjack wins $15). The stingier "6:5" is a config
+     option; 3:2 is much better for the player.
+   * Insurance pays 2:1.   * A normal win pays 1:1 (even money).
+
+PLAYER OPTIONS
+   * Double on any first two cards.
+   * Double after split (DAS): allowed.
+   * Split pairs up to four hands total.
+   * Re-split Aces: not allowed. Split Aces get one card each.
+   * Late surrender: allowed.
+   * Insurance: offered when the dealer shows an Ace.
+
+TABLE
+   * Minimum bet $5, maximum bet $500.
+   * Starting bankroll $500.
+   * Chip denominations: $5, $25, $100, $500.
+
+These defaults make a solid, common Las Vegas-style game (6 decks, S17, 3:2, DAS,
+late surrender), which is quite player-friendly as blackjack goes.
+
+
+==============================================================================
+  10.  CHANGING THE RULES
+==============================================================================
+
+Every rule lives in ONE file:
+
+      config/blackjack-rules.config.js
+
+Edit a value there and the game plays differently — you never touch the game
+logic. In development (npm run dev) changes apply instantly; for a built or
+installed app, rebuild with "npm run build" so the new rules are bundled.
+
+COMMON KNOBS
+   shoe.numberOfDecks ......... 1, 2, 4, 6, or 8
+   dealer.hitsSoft17 .......... false = S17 (default), true = H17
+   payouts.blackjack .......... 1.5 = 3:2 (default), 1.2 = 6:5
+   player.doubleRestriction ... 'any' (default), '9-11', or '10-11'
+   player.doubleAfterSplit .... true/false
+   player.surrender ........... 'none', 'late' (default), or 'early'
+   player.maxSplitHands ....... 2, 3, or 4
+   table.minBet / maxBet ...... table limits (maxBet also caps Martingale)
+   table.startingBankroll ..... starting chips
+   teaching.* ................. turn the hint, explanations, counting readout,
+                                true count, and deviation warnings on or off
+
+THE CAPABILITY GUARD
+   A few options describe rules this version doesn't fully implement yet. Rather
+   than play them WRONG (the worst kind of bug in a teaching app), the game shows
+   a "Config notes" warning on screen and in the console, and falls back to safe,
+   documented behavior. These currently include:
+
+      * shoe.continuousShuffle  -> falls back to a normal reshuffle; the count
+                                   readout is hidden.
+      * dealer.peeksForBlackjack: false (European no-peek) -> the dealer peeks
+                                   (US style) instead.
+      * player.surrender: 'early' -> treated as late surrender.
+      * player.resplitAces / hitSplitAces -> split Aces still get one card each.
+      * teaching.countingSystem other than 'hi-lo' -> the readout uses Hi-Lo.
+
+   If you see a config note, that's why.
+
+
+==============================================================================
+  11.  SOUND & MOTION
+==============================================================================
+
+   * Sound effects (card flicks, chips, shuffle, win/lose/push tones) are
+     generated on the fly — there are no audio files, and they work fully offline.
+     Tap 🔊 / 🔇 to mute or un-mute; the setting is remembered.
+   * On iPhones, sound only starts after your first tap (an Apple requirement),
+     so the very first action may be silent — that's normal.
+   * Card and chip animations respect your phone's "Reduce Motion" accessibility
+     setting; turn that on at the OS level for a still, instant interface.
+
+
+==============================================================================
+  12.  SAVING, RESETTING & RUNNING OUT OF CHIPS
+==============================================================================
+
+SAVING
+   Your bankroll and the mute setting are saved on your device automatically. The
+   bankroll is only saved at safe moments (between hands), so if you close the app
+   mid-hand, that unfinished hand is voided — not charged — when you return.
+
+RESETTING
+   Tap ↺ in the top bar (between hands) to reset your bankroll to the starting
+   amount and begin a fresh session.
+
+RUNNING OUT
+   If your bankroll drops below the table minimum, the game shows "Out of chips."
+   with a RE-BUY button to restock to the starting bankroll. (It's only chips —
+   re-buy freely.)
+
+
+==============================================================================
+  13.  GLOSSARY
+==============================================================================
+
+   Bankroll ......... The chips you have to bet with.
+   Bust ............. A hand total over 21 — an automatic loss.
+   Push ............. A tie with the dealer; your bet is returned.
+   Natural / Blackjack  An Ace + a 10-value card on the first two cards = 21.
+   Soft hand ........ A hand with an Ace counted as 11 (e.g. soft 17 = A+6).
+   Hard hand ........ No Ace, or an Ace forced to count as 1.
+   Up-card .......... The dealer's face-up card.
+   Hole card ........ The dealer's face-down card.
+   Peek ............. The dealer checking the hole card for blackjack before play.
+   Double (down) .... Double the bet for exactly one more card.
+   Split ............ Turn a pair into two separate hands.
+   DAS .............. "Double After Split" — doubling a hand created by splitting.
+   Surrender ........ Forfeit half the bet to fold a bad hand.
+   Insurance ........ A side bet that the dealer has blackjack (offered vs an Ace).
+   Penetration ...... How deep into the shoe the dealer deals before reshuffling.
+   Shoe ............. The combined stack of decks the cards are dealt from.
+   Running count .... The Hi-Lo tally of cards seen so far.
+   True count ....... Running count divided by decks remaining.
+   EV ............... "Expected value" — average result of a play, in bets.
+   Ruin ............. Losing your entire bankroll.
+   House edge ....... The casino's built-in long-run advantage.
+
+==============================================================================
+  Have fun, and remember: the house always wins in the long run — so here, play
+  for the practice, not the payout.
+==============================================================================
