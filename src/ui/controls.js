@@ -55,7 +55,7 @@ export function mount(root, game, options = {}) {
 
     // Reveal the hint without disturbing game state.
     if (action === 'hint') {
-      ui.hintShown = true;
+      ui.hintShown = !ui.hintShown;
       render(root, game, options);
       return;
     }
