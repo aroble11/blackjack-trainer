@@ -479,10 +479,9 @@ export function render(root, g, options = {}) {
       }
       <div class="table-area">
         ${renderDealer(g)}
-        ${feltBranding(g.rules)}
+        ${g.phase === Phase.RoundOver ? renderResultOverlay(g) : feltBranding(g.rules)}
         ${renderPlayer(g)}
       </div>
-      ${g.phase === Phase.RoundOver ? renderResultOverlay(g) : ''}
       ${renderControls(g, options)}
       ${g.justReshuffled ? '<div class="toast" role="status">Shuffling…</div>' : ''}
       ${

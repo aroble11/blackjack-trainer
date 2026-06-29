@@ -732,22 +732,17 @@ body {
 
 /* ── round-over result overlay ───────────────────────────────────────────── */
 .result-overlay {
-  position: absolute;
-  top: 42%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  flex: 0 0 auto;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.1rem;
-  z-index: 4;
-  pointer-events: none;
   text-align: center;
   animation: result-pop 320ms ease-out both;
 }
 
 .result-text {
-  white-space: nowrap;
   font-size: 2.2rem;
   font-weight: 800;
   font-style: italic;
@@ -775,11 +770,11 @@ body {
 @keyframes result-pop {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.7);
+    transform: scale(0.7);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 
