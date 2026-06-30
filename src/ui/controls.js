@@ -34,10 +34,15 @@ import {
   nextRound,
   rebuy,
   resetBankroll,
+  deckCountChanged,
+  abandonRound,
+  rebuildShoe,
 } from '../engine/game.js';
 import { bestAction } from '../teaching/advisor.js';
 import { runSimulation } from '../sim/simulator.js';
 import { needsReshuffle } from '../engine/shoe.js';
+
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 export function mount(root, game, options = {}) {
   const { persist, settings } = options;
@@ -46,9 +51,34 @@ export function mount(root, game, options = {}) {
     deviation: null,
     view: 'table',
     settingsShown: false,
+    decksOnOpen: null, // deck count snapshotted when settings was last opened
     reshuffling: false,
     sim: { system: 'martingale', sessions: 2000, hands: 100, result: null, running: false },
   });
+
+  // Reshuffle the moment settings closes IF the deck count differs from what it
+  // was when settings opened (ui.decksOnOpen) — not from the shoe's current
+  // size, which can drift after a mid-hand change. Bumping 6→5→6 and closing
+  // nets no change, so nothing fires. A reshuffle can't keep cards that are in
+  // play, so if a hand is in progress it's abandoned (the committed stake is
+  // forfeited as a loss) before the rebuild. Returns true if it fired (the
+  // caller should skip its own render — this one renders itself).
+  function reshuffleNowIfChanged() {
+    const changed = !!settings && settings.numberOfDecks !== ui.decksOnOpen;
+    if (!changed || game.shoe.continuousShuffle) return false;
+    ui.reshuffling = true;
+    render(root, game, options);
+    sound.shuffle();
+    setTimeout(() => {
+      ui.reshuffling = false;
+      if (game.phase !== Phase.Betting) abandonRound(game); // drop any hand in progress
+      rebuildShoe(game);
+      if (persist) persist();
+      render(root, game, options);
+      game.justReshuffled = false;
+    }, 2000);
+    return true;
+  }
 
   root.addEventListener('click', (event) => {
     if (ui.reshuffling) return; // game is paused on the reshuffle announcement
@@ -75,17 +105,34 @@ export function mount(root, game, options = {}) {
     }
 
     if (action === 'openSettings') {
+      const wasShown = ui.settingsShown;
       ui.settingsShown = !ui.settingsShown;
+      if (!wasShown) {
+        ui.decksOnOpen = settings ? settings.numberOfDecks : null; // snapshot on open
+      } else if (reshuffleNowIfChanged()) {
+        return; // closing via the gear toggle
+      }
       render(root, game, options);
       return;
     }
     if (action === 'closeSettings') {
       ui.settingsShown = false;
+      if (reshuffleNowIfChanged()) return;
       render(root, game, options);
       return;
     }
     if (action === 'toggleSoftDisplay') {
       if (settings) settings.softDisplayBothValues = !settings.softDisplayBothValues;
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+    if (action === 'decksUp' || action === 'decksDown') {
+      if (settings) {
+        const next = clamp(settings.numberOfDecks + (action === 'decksUp' ? 1 : -1), 1, 99);
+        settings.numberOfDecks = next;
+        game.rules.shoe.numberOfDecks = next; // live reference — rulesChip() picks it up immediately
+      }
       if (persist) persist();
       render(root, game, options);
       return;
@@ -121,9 +168,16 @@ export function mount(root, game, options = {}) {
     ui.hintShown = false;
     ui.deviation = null;
 
-    // Dealing into a depleted shoe: pause on a "RESHUFFLE" announcement + the
-    // shuffle sound for 2s before actually dealing, instead of an instant cut.
-    if (action === 'deal' && canDeal(game) && needsReshuffle(game.shoe) && !game.shoe.continuousShuffle) {
+    // Dealing into a depleted shoe (or a shoe whose deck count no longer matches
+    // the configured setting, e.g. changed mid-hand and not yet applied): pause
+    // on a "RESHUFFLE" announcement + the shuffle sound for 2s before actually
+    // dealing, instead of an instant cut.
+    if (
+      action === 'deal' &&
+      canDeal(game) &&
+      (needsReshuffle(game.shoe) || deckCountChanged(game)) &&
+      !game.shoe.continuousShuffle
+    ) {
       ui.reshuffling = true;
       render(root, game, options);
       sound.shuffle();

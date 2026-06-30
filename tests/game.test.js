@@ -14,10 +14,15 @@ import {
   rebuy,
   resetBankroll,
   withinDoubleRestriction,
+  deckCountChanged,
+  abandonRound,
+  rebuildShoe,
   Phase,
 } from '../src/engine/game.js';
 import { parseCards } from '../src/engine/cards.js';
+import { needsReshuffle } from '../src/engine/shoe.js';
 import { withRules } from './helpers/rules.js';
+import { mulberry32 } from './helpers/rng.js';
 
 const rules = withRules();
 const START = 50000; // $500 starting bankroll, in cents
@@ -61,6 +66,79 @@ describe('deal', () => {
     deal(g);
     expect(g.justReshuffled).toBe(false); // the flag did not trigger a reshuffle
     expect(g.shoe.pos).toBe(4); // 4 cards drawn, not reset to the top
+  });
+});
+
+describe('deck-count change', () => {
+  it('rebuilds the shoe at the next deal when rules.shoe.numberOfDecks changes, even before penetration', () => {
+    const r = withRules({ shoe: { numberOfDecks: 1, penetration: 0.75 } });
+    const g = createGame(r, { rng: mulberry32(1) });
+    expect(g.shoe.numberOfDecks).toBe(1);
+    expect(g.shoe.cards).toHaveLength(52);
+    expect(needsReshuffle(g.shoe)).toBe(false); // fresh shoe, nowhere near the cut
+
+    r.shoe.numberOfDecks = 2; // simulate the settings-panel mutation
+    setBet(g, 500);
+    deal(g);
+
+    expect(g.shoe.numberOfDecks).toBe(2);
+    expect(g.shoe.cards).toHaveLength(104);
+    expect(g.justReshuffled).toBe(true);
+  });
+
+  it('does not rebuild the shoe mid-hand even if the setting changes', () => {
+    const r = withRules({ shoe: { numberOfDecks: 1 } });
+    const g = createGame(r, { rng: mulberry32(1) });
+    setBet(g, 500);
+    deal(g); // now mid-hand — canDeal() is false until the round ends
+
+    r.shoe.numberOfDecks = 8;
+    expect(canDeal(g)).toBe(false);
+    expect(g.shoe.numberOfDecks).toBe(1); // untouched — deal() never ran again
+  });
+
+  it('deckCountChanged is false again after toggling the setting back to its original value', () => {
+    // e.g. settings opened, changed 6→5, changed back 5→6, then closed: no
+    // reshuffle should fire since the net change is zero.
+    const r = withRules({ shoe: { numberOfDecks: 6 } });
+    const g = createGame(r, { rng: mulberry32(1) });
+    expect(deckCountChanged(g)).toBe(false);
+
+    r.shoe.numberOfDecks = 5;
+    expect(deckCountChanged(g)).toBe(true);
+
+    r.shoe.numberOfDecks = 6;
+    expect(deckCountChanged(g)).toBe(false);
+  });
+
+  it('abandonRound forfeits an in-progress hand (no refund) and returns to betting', () => {
+    const g = gameWith(['10S', '7H', '9D', '5C']); // P19 vs D 12 — no naturals, stays mid-hand
+    setBet(g, 500);
+    deal(g);
+    expect(g.phase).toBe(Phase.PlayerTurn);
+    const bankrollMidHand = g.bankrollCents; // stake already deducted at deal
+    expect(bankrollMidHand).toBe(START - 500);
+
+    abandonRound(g);
+
+    expect(g.phase).toBe(Phase.Betting);
+    expect(g.playerHands).toHaveLength(0);
+    expect(g.dealerCards).toHaveLength(0);
+    expect(g.bankrollCents).toBe(bankrollMidHand); // forfeited — nothing credited back
+  });
+
+  it('rebuildShoe replaces the shoe at the configured deck count and flags justReshuffled', () => {
+    const r = withRules({ shoe: { numberOfDecks: 1 } });
+    const g = createGame(r, { rng: mulberry32(1) });
+    g.justReshuffled = false;
+
+    r.shoe.numberOfDecks = 3;
+    rebuildShoe(g);
+
+    expect(g.shoe.numberOfDecks).toBe(3);
+    expect(g.shoe.cards).toHaveLength(156);
+    expect(g.shoe.pos).toBe(0);
+    expect(g.justReshuffled).toBe(true);
   });
 });
 

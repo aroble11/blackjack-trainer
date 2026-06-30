@@ -104,11 +104,38 @@ export function canDeal(g) {
   );
 }
 
+/** True once the shoe's actual deck count no longer matches the configured rule. */
+export function deckCountChanged(g) {
+  return g.shoe.numberOfDecks !== g.rules.shoe.numberOfDecks;
+}
+
+/** Force a full shoe rebuild at the currently configured deck count. Unlike
+ * reshuffle(), which only shuffles the existing array in place, this is the
+ * only way to actually change deck count. */
+export function rebuildShoe(g) {
+  g.shoe = createShoe(g.rules, { rng: g.shoe.rng });
+  g.justReshuffled = true;
+}
+
+/** Abandon any round in progress and return to betting. Stakes already
+ * committed (the initial bet, plus any double/split/insurance) are NOT
+ * refunded — the hand is forfeited as a loss. Used when a deck-count change
+ * forces an immediate shoe rebuild mid-hand: the cards in play can't survive a
+ * reshuffle, so the hand is dropped. Resets the same state as nextRound(); the
+ * difference is purely that no settlement credited the bankroll first. */
+export function abandonRound(g) {
+  return nextRound(g);
+}
+
 // ── dealing ─────────────────────────────────────────────────────────────────
 export function deal(g) {
   if (!canDeal(g)) throw new Error('Cannot deal: invalid bet or wrong phase.');
-  g.justReshuffled = needsReshuffle(g.shoe); // surfaced to the UI for a shuffle cue
-  if (g.justReshuffled) reshuffle(g.shoe);
+  if (deckCountChanged(g)) {
+    rebuildShoe(g); // surfaces the same shuffle cue to the UI as a natural reshuffle
+  } else {
+    g.justReshuffled = needsReshuffle(g.shoe); // surfaced to the UI for a shuffle cue
+    if (g.justReshuffled) reshuffle(g.shoe);
+  }
 
   g.bankrollCents -= g.betCents; // commit the stake
 

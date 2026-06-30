@@ -12,22 +12,28 @@ const { warnings } = validateRules(RULES);
 warnings.forEach((w) => console.warn('[config] ' + w));
 
 async function start() {
-  const game = createGame(RULES);
-  const settings = { muted: false, softDisplayBothValues: false };
+  const settings = { muted: false, softDisplayBothValues: false, numberOfDecks: RULES.shoe.numberOfDecks };
 
-  // Restore bankroll + settings from a previous session, if any.
+  // Restore settings from a previous session BEFORE building the game/shoe, so a
+  // persisted deck count is baked into the very first shoe instead of being built
+  // at the default and corrected on the first deal.
   const persisted = await loadPersisted();
-  if (persisted && typeof persisted === 'object') {
-    // Guard against corrupt/tampered data: only a non-negative INTEGER number of
-    // cents (money is integer cents everywhere — never let storage break that).
-    if (Number.isInteger(persisted.bankrollCents) && persisted.bankrollCents >= 0) {
-      game.bankrollCents = persisted.bankrollCents;
-    }
-    if (persisted.settings && typeof persisted.settings === 'object') {
-      Object.assign(settings, persisted.settings);
-    }
+  if (persisted && typeof persisted === 'object' && persisted.settings && typeof persisted.settings === 'object') {
+    Object.assign(settings, persisted.settings);
+  }
+  // Guard against corrupt/tampered data: an integer in [1, 99] (never let
+  // storage produce a shoe size the rest of the engine wasn't built to expect).
+  if (Number.isInteger(settings.numberOfDecks)) {
+    RULES.shoe.numberOfDecks = Math.max(1, Math.min(99, settings.numberOfDecks));
   }
   setMuted(settings.muted);
+
+  const game = createGame(RULES);
+
+  // Restore the bankroll from a previous session, if any.
+  if (persisted && Number.isInteger(persisted.bankrollCents) && persisted.bankrollCents >= 0) {
+    game.bankrollCents = persisted.bankrollCents;
+  }
 
   // Settings save immediately; the bankroll only saves at a stable point (between
   // rounds), so an interrupted hand is voided — not charged — on reload.
