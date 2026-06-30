@@ -386,6 +386,55 @@ function renderCount(g) {
     </div>`;
 }
 
+function renderDeckStack(g) {
+  if (g.shoe.continuousShuffle) return '';
+  const total = g.shoe.cards.length;
+  const deckPct = Math.max(0, Math.min(1, (total - g.shoe.pos) / total));
+  // Portrait card (60×84) — exact same proportions as game cards.
+  // Left face (84h, depth going lower-left) is cream/white like card-stock edges.
+  // Rendered outside .table-area so it can bleed past the screen edge; the SVG
+  // is then rotated 45° via CSS from its top-right corner anchor.
+  const t = g.rules.teaching || {};
+  const countBarShown = t.showCardCounting && t.countingSystem !== 'none';
+  const topOffset = countBarShown ? '5.5rem' : '3.2rem';
+  const D = deckPct * 24;
+  const hD = D / 2;
+
+  // Left face (84h = long side) — cream card-stock color
+  const leftFace =
+    D > 0.1
+      ? `<polygon points="24,0 ${(24 - D).toFixed(1)},${hD.toFixed(1)} ${(24 - D).toFixed(1)},${(84 + hD).toFixed(1)} 24,84" fill="#ece9e2"/>`
+      : '';
+  // Bottom face (60w = short side) — slightly darker
+  const bottomFace =
+    D > 0.1
+      ? `<polygon points="24,84 ${(24 - D).toFixed(1)},${(84 + hD).toFixed(1)} ${(84 - D).toFixed(1)},${(84 + hD).toFixed(1)} 84,84" fill="#d8d4cc"/>`
+      : '';
+  // Card edge lines on left face
+  const edgeLines =
+    D > 0.1
+      ? Array.from({ length: 6 }, (_, i) => {
+          const y = ((i + 1) * 84) / 7;
+          return `<line x1="24" y1="${y.toFixed(1)}" x2="${(24 - D).toFixed(1)}" y2="${(y + hD).toFixed(1)}" stroke="rgba(0,0,0,0.08)" stroke-width="0.6"/>`;
+        }).join('')
+      : '';
+
+  // Embed the exact game card back as a nested SVG at x=24, y=0 (same 60×84 viewBox).
+  // Rename the pattern ID to avoid document-level conflicts with the game cards.
+  const cardBack = cardBackSvg()
+    .replace('<svg class="card-svg"', '<svg x="24" y="0" width="60" height="84"')
+    .replace(/cardBackLattice/g, 'deckBackLattice');
+
+  return `<div class="deck-stack-wrap" style="top:${topOffset}" aria-label="Remaining shoe depth" data-shuffling="${g.justReshuffled ? 'true' : 'false'}">
+    <svg class="deck-stack-svg" viewBox="0 0 84 96" xmlns="http://www.w3.org/2000/svg">
+      ${leftFace}
+      ${bottomFace}
+      ${cardBack}
+      ${edgeLines}
+    </svg>
+  </div>`;
+}
+
 // ── betting simulator screen (Phase 5) ───────────────────────────────────────
 const pct = (x) => Math.round(x * 100) + '%';
 const fmtMoneySigned = (cents) => (cents < 0 ? '−' : '') + formatMoney(Math.abs(Math.round(cents)));
@@ -505,6 +554,7 @@ export function render(root, g, options = {}) {
         ${g.phase === Phase.RoundOver ? renderResultOverlay(g) : feltBranding(g.rules)}
         ${renderPlayer(g, options)}
       </div>
+      ${renderDeckStack(g)}
       ${renderControls(g, options)}
       ${g.justReshuffled ? '<div class="toast" role="status">Shuffling…</div>' : ''}
       ${

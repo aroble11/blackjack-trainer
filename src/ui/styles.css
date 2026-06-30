@@ -183,6 +183,37 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── deck stack visual ───────────────────────────────────────────────────── */
+.deck-stack-wrap {
+  position: absolute;
+  /* top is injected inline per-render (accounts for count-bar visibility) */
+  right: -0.5rem; /* right portion of card face bleeds slightly off screen */
+  z-index: 2;
+  pointer-events: none;
+}
+
+.deck-stack-svg {
+  /* 80px makes the card face (60/84 of viewBox) ≈ 57px — same as game cards */
+  width: 80px;
+  display: block;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.5));
+  transform: rotate(-45deg);
+  transform-origin: top right;
+}
+
+@keyframes deck-shuffle {
+  0%   { transform: rotate(-45deg) scale(1.0); }
+  20%  { transform: rotate(-55deg) scale(0.95); }
+  45%  { transform: rotate(-38deg) scale(1.03); }
+  65%  { transform: rotate(-50deg) scale(1.0); }
+  85%  { transform: rotate(-42deg) scale(1.0); }
+  100% { transform: rotate(-45deg) scale(1.0); }
+}
+
+.deck-stack-wrap[data-shuffling="true"] .deck-stack-svg {
+  animation: deck-shuffle 0.55s ease-out;
+}
+
 /* ── betting simulator screen (Phase 5) ──────────────────────────────────── */
 .sim-title {
   flex: 1;

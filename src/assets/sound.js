@@ -54,14 +54,18 @@ function tone({ freq, type = 'sine', dur = 0.12, gain = 0.16, slideTo, delay = 0
   }
 }
 
-function noise({ dur = 0.09, gain = 0.16, filterFreq = 2200 }) {
+function noise({ dur = 0.09, gain = 0.16, filterFreq = 2200, softAttack = false }) {
   if (!ctx || muted) return;
   try {
     const t = ctx.currentTime;
     const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
     const buffer = ctx.createBuffer(1, n, ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n); // decaying
+    // softAttack uses a sine bell envelope (gradual in + out) instead of hard start
+    for (let i = 0; i < n; i++) {
+      const env = softAttack ? Math.sin((Math.PI * i) / n) : 1 - i / n;
+      data[i] = (Math.random() * 2 - 1) * env;
+    }
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const lp = ctx.createBiquadFilter();
@@ -79,7 +83,7 @@ function noise({ dur = 0.09, gain = 0.16, filterFreq = 2200 }) {
 export const sound = {
   deal: () => noise({ dur: 0.09, gain: 0.18, filterFreq: 2200 }), // card flick
   chip: () => tone({ freq: 880, type: 'square', dur: 0.06, gain: 0.1, slideTo: 1250 }),
-  shuffle: () => noise({ dur: 0.5, gain: 0.12, filterFreq: 1500 }),
+  shuffle: () => noise({ dur: 0.8, gain: 0.05, filterFreq: 800, softAttack: true }),
   win: () => [660, 880, 1320].forEach((f, i) => tone({ freq: f, type: 'triangle', dur: 0.18, gain: 0.16, delay: i * 0.09 })),
   lose: () => tone({ freq: 320, type: 'sawtooth', dur: 0.42, gain: 0.14, slideTo: 120 }),
   push: () => tone({ freq: 440, type: 'sine', dur: 0.18, gain: 0.1 }),
