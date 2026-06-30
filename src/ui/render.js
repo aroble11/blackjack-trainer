@@ -313,6 +313,14 @@ function renderResultOverlay(g) {
     </div>`;
 }
 
+// Shown in place of the felt branding while controls.js holds the 2s pause
+// for a reshuffle — same markup/style as the round-over overlay above.
+function renderReshuffleOverlay() {
+  return `<div class="result-overlay reshuffle" role="status">
+      <span class="result-text">RESHUFFLE</span>
+    </div>`;
+}
+
 function rulesChip(rules) {
   const pay =
     rules.payouts.blackjack === 1.5
@@ -595,12 +603,17 @@ export function render(root, g, options = {}) {
       }
       <div class="table-area">
         ${renderDealer(g, options)}
-        ${g.phase === Phase.RoundOver ? renderResultOverlay(g) : feltBranding(g.rules)}
+        ${
+          options.ui?.reshuffling
+            ? renderReshuffleOverlay()
+            : g.phase === Phase.RoundOver
+              ? renderResultOverlay(g)
+              : feltBranding(g.rules)
+        }
         ${renderPlayer(g, options)}
       </div>
       ${renderDeckStack(g)}
       ${renderControls(g, options)}
-      ${g.justReshuffled ? '<div class="toast" role="status">Shuffling…</div>' : ''}
       ${
         warnings.length
           ? `<div class="config-warnings" role="status"><strong>Config notes:</strong><ul>${warnings

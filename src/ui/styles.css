@@ -710,39 +710,6 @@ body {
   animation: chip-drop 200ms ease-out both;
 }
 
-/* Transient shuffle cue. */
-.toast {
-  position: absolute;
-  top: 28%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.62);
-  color: var(--gold);
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  pointer-events: none;
-  animation: toast-fade 1.6s ease-out forwards;
-}
-
-@keyframes toast-fade {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-  }
-  18% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  78% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
 /* ── round-over result overlay ───────────────────────────────────────────── */
 .result-overlay {
   flex: 0 0 auto;
@@ -779,6 +746,9 @@ body {
 .result-overlay.push .result-text {
   color: #fff;
 }
+.result-overlay.reshuffle .result-text {
+  color: #fff;
+}
 
 @keyframes result-pop {
   from {
@@ -794,7 +764,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .card-slot.dealt,
   .bet-stack.grew .stack-chip:last-child,
-  .toast,
   .result-overlay {
     animation: none;
   }

@@ -37,6 +37,7 @@ import {
 } from '../engine/game.js';
 import { bestAction } from '../teaching/advisor.js';
 import { runSimulation } from '../sim/simulator.js';
+import { needsReshuffle } from '../engine/shoe.js';
 
 export function mount(root, game, options = {}) {
   const { persist, settings } = options;
@@ -45,10 +46,12 @@ export function mount(root, game, options = {}) {
     deviation: null,
     view: 'table',
     settingsShown: false,
+    reshuffling: false,
     sim: { system: 'martingale', sessions: 2000, hands: 100, result: null, running: false },
   });
 
   root.addEventListener('click', (event) => {
+    if (ui.reshuffling) return; // game is paused on the reshuffle announcement
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
     const action = el.dataset.action;
@@ -117,6 +120,23 @@ export function mount(root, game, options = {}) {
     // A fresh action clears the previous hint reveal + deviation note.
     ui.hintShown = false;
     ui.deviation = null;
+
+    // Dealing into a depleted shoe: pause on a "RESHUFFLE" announcement + the
+    // shuffle sound for 2s before actually dealing, instead of an instant cut.
+    if (action === 'deal' && canDeal(game) && needsReshuffle(game.shoe) && !game.shoe.continuousShuffle) {
+      ui.reshuffling = true;
+      render(root, game, options);
+      sound.shuffle();
+      setTimeout(() => {
+        ui.reshuffling = false;
+        deal(game);
+        sound.deal();
+        if (persist) persist();
+        render(root, game, options);
+        game.justReshuffled = false;
+      }, 2000);
+      return;
+    }
 
     // For deviation warnings, capture the recommended move BEFORE applying it.
     const recommended = recommendedMove(game, action);
