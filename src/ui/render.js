@@ -386,6 +386,34 @@ function renderCount(g) {
     </div>`;
 }
 
+// Rounds a polygon's corners by cutting back along each edge and joining with
+// a quadratic curve — same rounded-corner language as the card's own rx.
+function roundedPolygonPath(pts, r) {
+  const n = pts.length;
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i - 1 + n) % n];
+    const curr = pts[i];
+    const next = pts[(i + 1) % n];
+    const v1x = curr[0] - prev[0],
+      v1y = curr[1] - prev[1];
+    const v1len = Math.hypot(v1x, v1y) || 1;
+    const r1 = Math.min(r, v1len / 2);
+    const p1x = curr[0] - (v1x / v1len) * r1,
+      p1y = curr[1] - (v1y / v1len) * r1;
+    const v2x = next[0] - curr[0],
+      v2y = next[1] - curr[1];
+    const v2len = Math.hypot(v2x, v2y) || 1;
+    const r2 = Math.min(r, v2len / 2);
+    const p2x = curr[0] + (v2x / v2len) * r2,
+      p2y = curr[1] + (v2y / v2len) * r2;
+    parts.push(`${i === 0 ? 'M' : 'L'} ${p1x.toFixed(2)} ${p1y.toFixed(2)}`);
+    parts.push(`Q ${curr[0].toFixed(2)} ${curr[1].toFixed(2)} ${p2x.toFixed(2)} ${p2y.toFixed(2)}`);
+  }
+  parts.push('Z');
+  return parts.join(' ');
+}
+
 function renderDeckStack(g) {
   if (g.shoe.continuousShuffle) return '';
   const total = g.shoe.cards.length;
@@ -400,15 +428,31 @@ function renderDeckStack(g) {
   const D = deckPct * 24;
   const hD = D / 2;
 
-  // Left face (84h = long side) — cream card-stock color
+  // Left face (84h = long side) — cream card-stock color, rounded to match the card's rx
   const leftFace =
     D > 0.1
-      ? `<polygon points="24,0 ${(24 - D).toFixed(1)},${hD.toFixed(1)} ${(24 - D).toFixed(1)},${(84 + hD).toFixed(1)} 24,84" fill="#ece9e2"/>`
+      ? `<path d="${roundedPolygonPath(
+          [
+            [24, 0],
+            [24 - D, hD],
+            [24 - D, 84 + hD],
+            [24, 84],
+          ],
+          6
+        )}" fill="#ece9e2"/>`
       : '';
-  // Bottom face (60w = short side) — slightly darker
+  // Bottom face (60w = short side) — slightly darker, rounded to match the card's rx
   const bottomFace =
     D > 0.1
-      ? `<polygon points="24,84 ${(24 - D).toFixed(1)},${(84 + hD).toFixed(1)} ${(84 - D).toFixed(1)},${(84 + hD).toFixed(1)} 84,84" fill="#d8d4cc"/>`
+      ? `<path d="${roundedPolygonPath(
+          [
+            [24, 84],
+            [24 - D, 84 + hD],
+            [84 - D, 84 + hD],
+            [84, 84],
+          ],
+          6
+        )}" fill="#d8d4cc"/>`
       : '';
   // Card edge lines on left face
   const edgeLines =
