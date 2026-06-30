@@ -2,7 +2,7 @@
 
                           B L A C K J A C K   T R A I N E R
 
-                            Instruction Manual  (v1)
+                            Instruction Manual  (v2)
 
 ==============================================================================
 
@@ -12,7 +12,7 @@ and shows you the mathematically best move, a live card count, and a simulator
 that reveals how betting systems really behave.
 
 This manual is written for someone brand new to blackjack. If you already know
-the game, skim sections 1, 4, and 6-10.
+the game, skim sections 1, 4, and 6-11.
 
 
 ------------------------------------------------------------------------------
@@ -29,9 +29,10 @@ the game, skim sections 1, 4, and 6-10.
    8.  The betting simulator
    9.  The rules this game uses
   10.  Changing the rules
-  11.  Sound & motion
-  12.  Saving, resetting & running out of chips
-  13.  Glossary
+  11.  Settings panel
+  12.  Sound & motion
+  13.  Saving, resetting & running out of chips
+  14.  Glossary
 
 
 ==============================================================================
@@ -113,18 +114,18 @@ The game is one tall screen, built for a phone. Here is the table during your
 turn:
 
    +------------------------------------------------------------
-   |  $500       6D · S17 · 3:2        📊   🔊   ↺       <- top bar
+   |  $500    6D · S17 · 3:2    📊   🔊   ⚙️   ↺        <- top bar
    +------------------------------------------------------------
    |  HI-LO   Running +2   True +0.6   5.4 decks         <- count
    +------------------------------------------------------------
-   |  DEALER  10
+   |  DEALER  10                                  [deck]  <- shoe-depth
    |     [ K♠ ]   [ ?? ]                       (hole card hidden)
    |
    |  YOU
    |     [ 9♦ ]   [ 7♣ ]     16     $25
    +------------------------------------------------------------
-   |  💡 Show basic-strategy hint
-   |  [ Hit ]  [ Stand ]  [ Double ]  [ Split ]  [ Surrender ]
+   |                                                  🏳️  <- surrender
+   |  [ Stand ]  [ Split ]  [ Double ]  [ Hit ]        💡  <- hint
    +------------------------------------------------------------
 
 THE TOP BAR (always visible)
@@ -134,6 +135,7 @@ THE TOP BAR (always visible)
                     3:2 = blackjack payout (see section 9 for all the shorthand).
    📊 .......... Opens the BETTING SIMULATOR (section 8).
    🔊 / 🔇 ..... Mute or un-mute sound effects.
+   ⚙️ .......... Opens the SETTINGS panel (section 11).
    ↺ ........... Reset your bankroll to the starting amount. (Shown only while
                  betting, between hands.)
 
@@ -142,25 +144,35 @@ THE COUNT READOUT (just under the top bar)
    left in the shoe. Green means the count favors you, red means it favors the
    house. Full details in section 7. (You can turn this off in the config.)
 
+THE SHOE-DEPTH VISUAL
+   A small angled stack-of-cards graphic sits in the upper corner of the table. It
+   visibly shrinks as the shoe is used up, so you can see at a glance how close the
+   next reshuffle is. It's hidden if the rules use a continuous shuffler.
+
 THE TABLE
    DEALER row .. The dealer's cards and their total. During your turn one card is
                  face-down ([ ?? ]) and no total is shown yet.
    YOU row ..... Your hand(s): the cards, the total (e.g. "16", "soft 18", or
                  "20 · bust"), and the chips wagered on that hand. After a split
-                 you'll see more than one hand here; the one you're playing is
+                 you'll see both hands here side by side; the one you're playing is
                  highlighted. When a round ends, a result badge appears:
                  Win, Lose, Push, Blackjack!, or Surrender.
 
 THE CONTROLS (bottom; they change with the moment)
    While BETTING .... chip buttons, your bet stack, the bet amount, CLEAR, DEAL.
    On a dealer Ace .. an insurance prompt: "Insure $X" or "No" (section 5).
-   During YOUR TURN . the hint button plus Hit / Stand / Double / Split /
-                      Surrender. A button is greyed out when that move isn't
-                      legal right now.
+   During YOUR TURN . Stand / Split / Double / Hit in a row (greyed out when that
+                      move isn't legal right now), the 💡 hint button (tap again
+                      to hide the hint panel), and — only on your very first
+                      decision on an unsplit hand — a separate round 🏳️ button
+                      for Surrender.
    After the ROUND .. a single NEXT HAND button.
 
 POP-UP CUES
-   * "Shuffling…" appears briefly when the shoe is reshuffled.
+   * A "RESHUFFLE" announcement pauses the table for about two seconds (with a
+     shuffle sound) whenever a fresh shoe is about to be dealt — either because
+     the old shoe ran low, or because you just changed the number of decks in
+     Settings (section 11).
    * A "Config notes" panel appears only if the rules file asks for something this
      version doesn't fully support (see section 10).
 
@@ -210,7 +222,7 @@ INSURANCE
 
 A note on money: everything is chips. Your bet is taken when committed and paid
 back at settlement. Win pays even money (1:1), blackjack pays 3:2, a push returns
-your bet. If you can't even cover the table minimum, see section 12.
+your bet. If you can't even cover the table minimum, see section 13.
 
 
 ==============================================================================
@@ -228,6 +240,8 @@ and the game shows the single best move, like:
       42% of the time, so let them draw.
       Computed from your rules — cross-check an authoritative chart for the
       closest calls.
+
+Tap the lightbulb a second time to hide the hint panel again — it toggles.
 
 If you then make a DIFFERENT move, a note flags it for that hand:
 
@@ -302,7 +316,7 @@ COLOR
    The game counts each card the instant you'd actually see it at a real table —
    including the dealer's hidden card ONLY once it's turned face-up, never while
    it's face-down. The count carries across hands and RESETS to zero whenever the
-   shoe is reshuffled (watch for the "Shuffling…" cue).
+   shoe is reshuffled (watch for the "RESHUFFLE" announcement, section 4).
 
 WHAT TO DO WITH IT
    Card counters bet MORE when the true count is high (the deck favors them) and
@@ -432,6 +446,10 @@ COMMON KNOBS
    teaching.* ................. turn the hint, explanations, counting readout,
                                 true count, and deviation warnings on or off
 
+   TIP: you don't need to edit this file just to try a different number of
+   decks — the in-game Settings panel (section 11) lets you change it on the
+   fly, from 1 up to 99, without a rebuild.
+
 THE CAPABILITY GUARD
    A few options describe rules this version doesn't fully implement yet. Rather
    than play them WRONG (the worst kind of bug in a teaching app), the game shows
@@ -450,7 +468,34 @@ THE CAPABILITY GUARD
 
 
 ==============================================================================
-  11.  SOUND & MOTION
+  11.  SETTINGS PANEL
+==============================================================================
+
+Tap ⚙️ in the top bar to open Settings. Tap the gear again, or tap outside the
+panel, to close it.
+
+ALTERNATE SOFT VALUE
+   Switches how a soft hand's total is shown: "14 · soft" (default) or spelled
+   out as "4 or 14 · soft". This only changes the display — the hand is played
+   identically either way.
+
+NUMBER OF DECKS
+   Use the ▲ / ▼ stepper to change how many decks are in the shoe, from 1 up to
+   99. The change takes effect the moment you close the panel: if the count is
+   now different from what it was when you opened Settings, the table pauses on
+   a "RESHUFFLE" announcement (section 4) and rebuilds the shoe at the new size.
+
+   IMPORTANT: if you change the deck count while a hand is still in progress,
+   that hand is abandoned and its bet is forfeited — not refunded — the moment
+   the new shoe is built. There's no extra warning before this happens, so
+   finish or surrender your current hand first if you don't want to lose it.
+
+Both settings (and mute, section 12) are remembered on your device between
+sessions, the same as your bankroll.
+
+
+==============================================================================
+  12.  SOUND & MOTION
 ==============================================================================
 
    * Sound effects (card flicks, chips, shuffle, win/lose/push tones) are
@@ -463,13 +508,15 @@ THE CAPABILITY GUARD
 
 
 ==============================================================================
-  12.  SAVING, RESETTING & RUNNING OUT OF CHIPS
+  13.  SAVING, RESETTING & RUNNING OUT OF CHIPS
 ==============================================================================
 
 SAVING
-   Your bankroll and the mute setting are saved on your device automatically. The
-   bankroll is only saved at safe moments (between hands), so if you close the app
-   mid-hand, that unfinished hand is voided — not charged — when you return.
+   Your bankroll and all of your Settings (mute, alternate soft value, number of
+   decks) are saved on your device automatically — the Settings changes save the
+   instant you make them. The bankroll is only saved at safe moments (between
+   hands), so if you close the app mid-hand, that unfinished hand is voided —
+   not charged — when you return.
 
 RESETTING
    Tap ↺ in the top bar (between hands) to reset your bankroll to the starting
@@ -482,7 +529,7 @@ RUNNING OUT
 
 
 ==============================================================================
-  13.  GLOSSARY
+  14.  GLOSSARY
 ==============================================================================
 
    Bankroll ......... The chips you have to bet with.
