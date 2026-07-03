@@ -474,10 +474,9 @@ THE CAPABILITY GUARD
 Tap ⚙️ in the top bar to open Settings. Tap the gear again, or tap outside the
 panel, to close it.
 
-ALTERNATE SOFT VALUE
-   Switches how a soft hand's total is shown: "14 · soft" (default) or spelled
-   out as "4 or 14 · soft". This only changes the display — the hand is played
-   identically either way.
+The options are grouped into TABLE, BANKROLL, and DISPLAY sections.
+
+── TABLE ─────────────────────────────────────────────────────────────────────
 
 NUMBER OF DECKS
    Use the ▲ / ▼ stepper to change how many decks are in the shoe, from 1 up to
@@ -501,11 +500,7 @@ CUT CARD
    The toggle is grayed out under a continuous shuffler (there's no shoe to
    cut).
 
-MAX BET
-   Use the ▲ / ▼ stepper to raise or lower the table's betting ceiling, in
-   $50 steps from $100 up to $10,000 (default $500). Unlike the deck count,
-   this takes effect immediately and never disturbs the current hand or bet —
-   it only changes what you're allowed to bet going forward.
+── BANKROLL ──────────────────────────────────────────────────────────────────
 
 STARTING AMOUNT
    Use the ▲ / ▼ stepper to set the bankroll you begin with, in $50 steps
@@ -522,6 +517,14 @@ SHOW STARTING AMOUNT
    reference point in view. This only changes the display; it has no effect on
    play.
 
+MAX BET
+   Use the ▲ / ▼ stepper to raise or lower the table's betting ceiling, in
+   $50 steps from $100 up to $10,000 (default $500). Unlike the deck count,
+   this takes effect immediately and never disturbs the current hand or bet —
+   it only changes what you're allowed to bet going forward.
+
+── DISPLAY ───────────────────────────────────────────────────────────────────
+
 SHOW CARD COUNT
    Shows or hides the Hi-Lo readout (section 9) — on by default. Turning it
    off just hides the words and numbers; the count itself keeps tracking
@@ -529,6 +532,11 @@ SHOW CARD COUNT
    picks up exactly where it would have been the whole time. This toggle is
    grayed out and does nothing if card counting isn't turned on for the
    table in the first place (or the shoe uses a continuous shuffler).
+
+ALTERNATE SOFT VALUE
+   Switches how a soft hand's total is shown: "14 · soft" (default) or spelled
+   out as "4 or 14 · soft". This only changes the display — the hand is played
+   identically either way.
 
 All of these settings (and mute, section 12) are remembered on your device
 between sessions, the same as your bankroll.

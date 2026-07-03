@@ -208,21 +208,7 @@ function renderSettingsPanel(g, options) {
   const countingActive = t.showCardCounting && t.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle;
   const shoeDepletes = !g.rules.shoe.continuousShuffle;
   return `<div class="settings-panel">
-      <div class="settings-row">
-        <span class="settings-label">Alternate soft value</span>
-        <button class="settings-toggle${on ? ' on' : ''}" data-action="toggleSoftDisplay"
-                role="switch" aria-checked="${on}">
-          <span class="toggle-knob"></span>
-        </button>
-      </div>
-      <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
-      <div class="settings-row">
-        <span class="settings-label">Show card count</span>
-        <button class="settings-toggle${showCount ? ' on' : ''}" data-action="toggleCardCount"
-                role="switch" aria-checked="${showCount}"${countingActive ? '' : ' disabled'}>
-          <span class="toggle-knob"></span>
-        </button>
-      </div>
+      <div class="settings-section">Table</div>
       <div class="settings-row">
         <span class="settings-label">Number of decks</span>
         <div class="stepper">
@@ -243,6 +229,7 @@ function renderSettingsPanel(g, options) {
         </button>
       </div>
       <p class="settings-example">Reshuffle at a random point late in the shoe</p>
+      <div class="settings-section">Bankroll</div>
       <div class="settings-row">
         <span class="settings-label">Starting amount</span>
         <div class="stepper">
@@ -274,6 +261,22 @@ function renderSettingsPanel(g, options) {
           </div>
         </div>
       </div>
+      <div class="settings-section">Display</div>
+      <div class="settings-row">
+        <span class="settings-label">Show card count</span>
+        <button class="settings-toggle${showCount ? ' on' : ''}" data-action="toggleCardCount"
+                role="switch" aria-checked="${showCount}"${countingActive ? '' : ' disabled'}>
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Alternate soft value</span>
+        <button class="settings-toggle${on ? ' on' : ''}" data-action="toggleSoftDisplay"
+                role="switch" aria-checked="${on}">
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+      <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
     </div>`;
 }
 

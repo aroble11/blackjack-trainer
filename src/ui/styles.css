@@ -938,6 +938,20 @@ body {
   padding: 0.4rem 0;
 }
 
+.settings-section {
+  padding: 0.55rem 0.9rem 0.15rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #2a1a0a;
+}
+
+.settings-section:not(:first-child) {
+  margin-top: 0.15rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .settings-row {
   display: flex;
   align-items: center;
