@@ -102,6 +102,11 @@ const OUTCOME_TEXT = {
   surrender: 'Surrender',
 };
 
+function formatSignedMoney(cents) {
+  const sign = cents > 0 ? '+' : cents < 0 ? '-' : '';
+  return `${sign}${formatMoney(Math.abs(cents))}`;
+}
+
 const ACTION_LABEL = {
   stand: 'Stand',
   hit: 'Hit',
@@ -135,8 +140,14 @@ function renderPlayerHand(g, hand, index, options) {
     })
     .join('');
   shownByHand.set(hand, new Set(hand.cards));
+  // On a split, the round-over overlay only shows the combined total, so each
+  // hand's own badge spells out its share (omitted on push — always $0, and
+  // on a single un-split hand, where the overlay figure already IS that
+  // hand's amount).
+  const showHandAmount = g.playerHands.length > 1 && hand.outcome && hand.outcome !== 'push';
+  const amountText = showHandAmount ? ` ${formatSignedMoney(hand.returnCents - hand.stakeCents)}` : '';
   const badge = hand.outcome
-    ? `<span class="badge ${hand.outcome}">${OUTCOME_TEXT[hand.outcome]}</span>`
+    ? `<span class="badge ${hand.outcome}">${OUTCOME_TEXT[hand.outcome]}${amountText}</span>`
     : '';
   return `<div class="hand-block ${active ? 'active' : ''}">
       <div class="hand">${cardsHtml}</div>
