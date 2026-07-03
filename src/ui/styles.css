@@ -479,7 +479,8 @@ body {
 }
 
 .hand-block.active .hand {
-  filter: drop-shadow(0 0 7px rgba(232, 198, 106, 0.75));
+  filter: drop-shadow(0 0 5px rgba(232, 198, 106, 0.95))
+          drop-shadow(0 0 16px rgba(232, 198, 106, 0.6));
 }
 
 .hand-meta {
@@ -512,6 +513,11 @@ body {
   font-size: 0.95rem;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.hand-block.active .total-bubble {
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(232, 198, 106, 0.7), 0 2px 4px rgba(0, 0, 0, 0.35);
 }
 
 

@@ -124,7 +124,8 @@ function renderStake(g, cents) {
 }
 
 function renderPlayerHand(g, hand, index, options) {
-  const active = g.phase === Phase.PlayerTurn && index === g.activeHandIndex;
+  const active =
+    g.phase === Phase.PlayerTurn && index === g.activeHandIndex && g.playerHands.length > 1;
   const shown = shownByHand.get(hand); // Set of card objects shown last render, or undefined
   let newOrder = 0; // stagger index among only the newly-dealt cards
   const cardsHtml = hand.cards
