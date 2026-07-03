@@ -7,6 +7,7 @@ import {
   cardsRemaining,
   needsReshuffle,
   reshuffle,
+  setRandomCutCard,
 } from '../src/engine/shoe.js';
 import { cardLabel, parseCards } from '../src/engine/cards.js';
 import { mulberry32 } from './helpers/rng.js';
@@ -92,5 +93,58 @@ describe('shoe draw / reshuffle', () => {
     reshuffle(shoe);
     expect(shoe.pos).toBe(0);
     expect(multiset(shoe.cards)).toEqual(before);
+  });
+});
+
+describe('random cut card', () => {
+  // For a full 6-deck shoe (312 cards) at 0.9 penetration:
+  const LEN = 312;
+  const LO = Math.floor(LEN * (2 / 3)); // 208 — start of the last third
+  const DEEP = Math.floor(LEN * 0.9); //   280 — the safe cap (== fixed cut when off)
+
+  it('off: cut is exactly the fixed penetration depth (unchanged behavior)', () => {
+    const shoe = createShoe({ shoe: { penetration: 0.9, randomCutCard: false } }, { rng: mulberry32(1) });
+    expect(shoe.cutIndex).toBe(DEEP);
+  });
+
+  it('on: cut lands in the last third, never deeper than penetration', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const shoe = createShoe(
+        { shoe: { penetration: 0.9, randomCutCard: true } },
+        { rng: mulberry32(seed) }
+      );
+      expect(shoe.cutIndex).toBeGreaterThanOrEqual(LO);
+      expect(shoe.cutIndex).toBeLessThanOrEqual(DEEP);
+    }
+  });
+
+  it('on: the cut actually varies between shoes (is random)', () => {
+    const cuts = new Set();
+    for (let seed = 1; seed <= 30; seed++) {
+      cuts.add(
+        createShoe({ shoe: { penetration: 0.9, randomCutCard: true } }, { rng: mulberry32(seed) }).cutIndex
+      );
+    }
+    expect(cuts.size).toBeGreaterThan(1);
+  });
+
+  it('reshuffle re-picks a fresh cut within range when on', () => {
+    const shoe = createShoe({ shoe: { penetration: 0.9, randomCutCard: true } }, { rng: mulberry32(3) });
+    for (let i = 0; i < 5; i++) {
+      reshuffle(shoe);
+      expect(shoe.cutIndex).toBeGreaterThanOrEqual(LO);
+      expect(shoe.cutIndex).toBeLessThanOrEqual(DEEP);
+    }
+  });
+
+  it('setRandomCutCard toggles the flag and re-picks the cut on the shoe in play', () => {
+    const shoe = createShoe({ shoe: { penetration: 0.9, randomCutCard: false } }, { rng: mulberry32(9) });
+    expect(shoe.cutIndex).toBe(DEEP);
+    setRandomCutCard(shoe, true);
+    expect(shoe.randomCutCard).toBe(true);
+    expect(shoe.cutIndex).toBeGreaterThanOrEqual(LO);
+    expect(shoe.cutIndex).toBeLessThanOrEqual(DEEP);
+    setRandomCutCard(shoe, false);
+    expect(shoe.cutIndex).toBe(DEEP); // back to the fixed deep cut
   });
 });

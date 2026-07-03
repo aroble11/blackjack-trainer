@@ -20,6 +20,7 @@ async function start() {
     showCardCount: true,
     startingAmount: RULES.table.startingBankroll,
     showStartingAmount: false,
+    randomCutCard: RULES.shoe.randomCutCard,
   };
 
   // Restore settings from a previous session BEFORE building the game/shoe, so a
@@ -40,6 +41,11 @@ async function start() {
   // bankroll below, so this only sets the reference used by resets/rebuys.)
   if (Number.isInteger(settings.startingAmount)) {
     RULES.table.startingBankroll = Math.max(100, Math.min(10000, settings.startingAmount));
+  }
+  // Apply the persisted cut-card choice BEFORE createGame, so the very first
+  // shoe is built with the right cut position.
+  if (typeof settings.randomCutCard === 'boolean') {
+    RULES.shoe.randomCutCard = settings.randomCutCard;
   }
   // Same guard for a persisted max bet: an integer in [100, 10000].
   if (Number.isInteger(settings.maxBet)) {

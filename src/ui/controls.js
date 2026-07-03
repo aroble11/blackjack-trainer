@@ -41,7 +41,7 @@ import {
 // (resetBankroll is reused by the starting-amount restart below.)
 import { bestAction } from '../teaching/advisor.js';
 import { runSimulation } from '../sim/simulator.js';
-import { needsReshuffle } from '../engine/shoe.js';
+import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -147,6 +147,20 @@ export function mount(root, game, options = {}) {
     }
     if (action === 'toggleShowStartAmount') {
       if (settings) settings.showStartingAmount = !settings.showStartingAmount;
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+    // Cut card: purely changes WHERE the shoe reshuffles — it never touches the
+    // bankroll, and the reshuffle itself (with its RESHUFFLE pause + count reset)
+    // still fires naturally on the next Deal via needsReshuffle(). Applying it to
+    // the current shoe re-picks the cut position immediately.
+    if (action === 'toggleCutCard') {
+      if (settings) {
+        settings.randomCutCard = !settings.randomCutCard;
+        game.rules.shoe.randomCutCard = settings.randomCutCard; // live reference
+        setRandomCutCard(game.shoe, settings.randomCutCard); // apply to the shoe in play
+      }
       if (persist) persist();
       render(root, game, options);
       return;

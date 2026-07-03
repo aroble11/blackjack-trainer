@@ -490,6 +490,17 @@ NUMBER OF DECKS
    the new shoe is built. There's no extra warning before this happens, so
    finish or surrender your current hand first if you don't want to lose it.
 
+CUT CARD
+   Off by default. Simulates a real dealer's cut card: when on, the table
+   picks a random spot in the last third of the shoe, and once dealing reaches
+   it, the shoe reshuffles as soon as the current hand finishes — the dealer
+   doesn't play the shoe all the way down. When off, the shoe is dealt deep,
+   reshuffling only near the end. The cut spot is re-rolled for every fresh
+   shoe, so you can't predict it. A reshuffle here works like any other
+   (section 4): your bankroll is untouched and the card count resets to zero.
+   The toggle is grayed out under a continuous shuffler (there's no shoe to
+   cut).
+
 MAX BET
    Use the ▲ / ▼ stepper to raise or lower the table's betting ceiling, in
    $50 steps from $100 up to $10,000 (default $500). Unlike the deck count,

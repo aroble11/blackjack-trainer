@@ -31,8 +31,16 @@ export const RULES = {
 
     // Fraction of the shoe dealt before reshuffling (the "penetration").
     // Valid: 0.5 to 0.9.  Deeper penetration makes counting more meaningful.
-    // Ignored if continuousShuffle is true.
-    penetration: 0.75,
+    // Ignored if continuousShuffle is true. This is the depth the shoe is dealt
+    // to when the cut card is OFF, and also the DEEPEST a random cut may fall
+    // when randomCutCard is on (the safe cap that keeps a card buffer).
+    penetration: 0.9,
+
+    // If true, simulate a dealer's cut card: reshuffle at a random position in
+    // the last third of the shoe (capped at `penetration`) instead of always
+    // dealing deep. Toggleable in-app via Settings ("Cut card"). Only meaningful
+    // when continuousShuffle is false.
+    randomCutCard: false,
 
     // If true, the shoe reshuffles every hand (a Continuous Shuffling Machine).
     // Set true to disable counting entirely; false for a realistic depleting shoe.

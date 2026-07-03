@@ -203,8 +203,10 @@ function renderSettingsPanel(g, options) {
   const startAmount = options.settings?.startingAmount ?? 500;
   const showStart = options.settings?.showStartingAmount ?? false;
   const showCount = options.settings?.showCardCount ?? true;
+  const cutCard = options.settings?.randomCutCard ?? false;
   const t = g.rules.teaching || {};
   const countingActive = t.showCardCounting && t.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle;
+  const shoeDepletes = !g.rules.shoe.continuousShuffle;
   return `<div class="settings-panel">
       <div class="settings-row">
         <span class="settings-label">Alternate soft value</span>
@@ -233,6 +235,14 @@ function renderSettingsPanel(g, options) {
           </div>
         </div>
       </div>
+      <div class="settings-row">
+        <span class="settings-label">Cut card</span>
+        <button class="settings-toggle${cutCard ? ' on' : ''}" data-action="toggleCutCard"
+                role="switch" aria-checked="${cutCard}"${shoeDepletes ? '' : ' disabled'}>
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+      <p class="settings-example">Reshuffle at a random point late in the shoe</p>
       <div class="settings-row">
         <span class="settings-label">Starting amount</span>
         <div class="stepper">

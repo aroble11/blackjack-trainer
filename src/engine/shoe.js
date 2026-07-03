@@ -54,6 +54,7 @@ export function createShoe(rules, { rng = Math.random, cards } = {}) {
   const numberOfDecks = shoeRules.numberOfDecks ?? 6;
   const penetration = shoeRules.penetration ?? 0.75;
   const continuousShuffle = shoeRules.continuousShuffle ?? false;
+  const randomCutCard = shoeRules.randomCutCard ?? false;
 
   // Pre-stacked decks are copied and used verbatim; otherwise build + shuffle.
   const deck = cards ? cards.slice() : shuffle(buildDecks(numberOfDecks), rng);
@@ -62,12 +63,43 @@ export function createShoe(rules, { rng = Math.random, cards } = {}) {
     cards: deck,
     pos: 0,
     seenCards: [], // cards the player has SEEN this shoe (for counting): appended as revealed, cleared on reshuffle
-    cutIndex: Math.floor(deck.length * penetration),
+    cutIndex: pickCutIndex(deck.length, penetration, randomCutCard, rng),
     rng,
     numberOfDecks,
     penetration,
     continuousShuffle,
+    randomCutCard,
   };
+}
+
+// The fraction of the shoe at which the "last third" begins — the shallowest a
+// random cut card may land.
+const LAST_THIRD = 2 / 3;
+
+/**
+ * Choose where the cut card sits (the draw index that triggers a between-rounds
+ * reshuffle). With randomCutCard OFF this is the fixed `penetration` depth — the
+ * historical behavior. With it ON, the cut lands at a uniformly random position
+ * in the last third of the shoe, but never deeper than `penetration` (the safe
+ * cap), so a buffer of cards always remains and the shoe can't exhaust mid-hand.
+ */
+function pickCutIndex(length, penetration, randomCutCard, rng) {
+  const deep = Math.floor(length * penetration);
+  if (!randomCutCard) return deep;
+  const lo = Math.floor(length * LAST_THIRD);
+  if (deep <= lo) return deep; // degenerate/tiny shoe: fall back to the deep cut
+  return lo + Math.floor(rng() * (deep - lo + 1)); // random in [lo, deep]
+}
+
+/**
+ * Toggle the random cut card on an existing shoe and re-pick its cut index in
+ * place, so the change takes effect on the shoe already in play (the reshuffle
+ * fires on the next Deal once the pointer reaches the new cut).
+ */
+export function setRandomCutCard(shoe, on) {
+  shoe.randomCutCard = on;
+  shoe.cutIndex = pickCutIndex(shoe.cards.length, shoe.penetration, on, shoe.rng);
+  return shoe;
 }
 
 /** Draw the next card, advancing the pointer. Throws if the shoe is exhausted. */
@@ -100,5 +132,8 @@ export function reshuffle(shoe) {
   shuffle(shoe.cards, shoe.rng);
   shoe.pos = 0;
   shoe.seenCards = []; // a fresh shoe — the running count starts over
+  // Re-pick the cut so each fresh shoe gets a new random cut card (a no-op for
+  // the fixed-penetration cut when randomCutCard is off).
+  shoe.cutIndex = pickCutIndex(shoe.cards.length, shoe.penetration, shoe.randomCutCard, shoe.rng);
   return shoe;
 }

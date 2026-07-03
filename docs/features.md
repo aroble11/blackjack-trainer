@@ -177,6 +177,14 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 - **Expected result:** The deck count shown in the top bar's rules chip updates instantly. If the count actually changed by the time Settings is closed, any hand currently in progress is **abandoned (the stake is forfeited, not refunded)**, and the app pauses on a "RESHUFFLE" announcement before rebuilding the shoe at the new size ([controls.js:59-81](src/ui/controls.js)).
 - **Related features:** Reshuffle Announcement.
 
+### Toggle Cut Card (randomized reshuffle)
+- **Purpose:** Simulate a dealer's cut card — reshuffle early at an unpredictable point instead of dealing the shoe to the end.
+- **Triggering action:** Flip the "Cut card" switch in Settings.
+- **Screen/component:** `renderSettingsPanel()` [render.js](src/ui/render.js); `toggleCutCard` handler [controls.js](src/ui/controls.js); cut math in `pickCutIndex`/`setRandomCutCard` [shoe.js](src/engine/shoe.js).
+- **Data used/changed:** `settings.randomCutCard` and the live `game.rules.shoe.randomCutCard`, saved immediately; re-picks the current shoe's `cutIndex`.
+- **Expected result:** When on, each shoe's reshuffle point is a random position in the last third (capped at the `penetration` depth so a card buffer always remains). The reshuffle still fires between rounds via the normal Reshuffle Announcement — bankroll unchanged, card count reset. When off, the shoe is dealt deep to the `penetration` point. Grayed out under a continuous shuffler.
+- **Related features:** Reshuffle Announcement, Live Hi-Lo Count.
+
 ### Mute/Unmute Sound
 - **Purpose:** Silence the app's synthesized sound effects.
 - **Triggering action:** Tap 🔊/🔇 in the top bar.
@@ -201,7 +209,7 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 
 ### Reshuffle Announcement
 - **Purpose:** Make a shoe reshuffle visible and deliberate rather than an invisible cut.
-- **Triggering action:** Automatic, when the shoe hits its penetration point on Deal, or when the deck count changes in Settings.
+- **Triggering action:** Automatic, when the shoe hits its cut point on Deal (the fixed penetration depth, or a random spot in the last third if the Cut Card setting is on), or when the deck count changes in Settings.
 - **Screen/component:** `renderReshuffleOverlay()` [render.js:331-335](src/ui/render.js); pacing in [controls.js:59-81, 175-193](src/ui/controls.js).
 - **Expected result:** A 2-second "RESHUFFLE" overlay plus a shuffle sound, during which input is paused, before the new shoe is ready.
 
