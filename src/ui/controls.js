@@ -137,6 +137,20 @@ export function mount(root, game, options = {}) {
       render(root, game, options);
       return;
     }
+    // Unlike deck count, the max bet doesn't shape the shoe, so it can just take
+    // effect immediately — no reshuffle-on-close dance needed. It only ever
+    // widens/narrows what setBet() clamps future bets to (game.js:85); it never
+    // touches a bet already placed.
+    if (action === 'maxBetUp' || action === 'maxBetDown') {
+      if (settings) {
+        const next = clamp(settings.maxBet + (action === 'maxBetUp' ? 100 : -100), 100, 10000);
+        settings.maxBet = next;
+        game.rules.table.maxBet = next; // live reference
+      }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
 
     // ── betting simulator (UI-only state; never touches the live game) ────────
     if (action === 'openSim') { ui.view = 'sim'; render(root, game, options); return; }

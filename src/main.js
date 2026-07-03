@@ -12,7 +12,12 @@ const { warnings } = validateRules(RULES);
 warnings.forEach((w) => console.warn('[config] ' + w));
 
 async function start() {
-  const settings = { muted: false, softDisplayBothValues: false, numberOfDecks: RULES.shoe.numberOfDecks };
+  const settings = {
+    muted: false,
+    softDisplayBothValues: false,
+    numberOfDecks: RULES.shoe.numberOfDecks,
+    maxBet: RULES.table.maxBet,
+  };
 
   // Restore settings from a previous session BEFORE building the game/shoe, so a
   // persisted deck count is baked into the very first shoe instead of being built
@@ -25,6 +30,10 @@ async function start() {
   // storage produce a shoe size the rest of the engine wasn't built to expect).
   if (Number.isInteger(settings.numberOfDecks)) {
     RULES.shoe.numberOfDecks = Math.max(1, Math.min(99, settings.numberOfDecks));
+  }
+  // Same guard for a persisted max bet: an integer in [100, 10000].
+  if (Number.isInteger(settings.maxBet)) {
+    RULES.table.maxBet = Math.max(100, Math.min(10000, settings.maxBet));
   }
   setMuted(settings.muted);
 

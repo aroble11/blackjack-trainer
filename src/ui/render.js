@@ -188,6 +188,7 @@ function surrenderFab() {
 function renderSettingsPanel(options) {
   const on = options.settings?.softDisplayBothValues ?? false;
   const decks = options.settings?.numberOfDecks ?? 6;
+  const maxBet = options.settings?.maxBet ?? 500;
   return `<div class="settings-panel">
       <div class="settings-row">
         <span class="settings-label">Alternate soft value</span>
@@ -199,13 +200,25 @@ function renderSettingsPanel(options) {
       <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
       <div class="settings-row">
         <span class="settings-label">Number of decks</span>
-        <div class="deck-stepper">
-          <span class="deck-stepper-value">${decks}</span>
-          <div class="deck-stepper-arrows">
-            <button class="deck-stepper-btn" data-action="decksUp"
+        <div class="stepper">
+          <span class="stepper-value">${decks}</span>
+          <div class="stepper-arrows">
+            <button class="stepper-btn" data-action="decksUp"
                     aria-label="Increase number of decks"${decks >= 99 ? ' disabled' : ''}>▲</button>
-            <button class="deck-stepper-btn" data-action="decksDown"
+            <button class="stepper-btn" data-action="decksDown"
                     aria-label="Decrease number of decks"${decks <= 1 ? ' disabled' : ''}>▼</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Max bet</span>
+        <div class="stepper">
+          <span class="stepper-value">${formatMoney(maxBet * 100)}</span>
+          <div class="stepper-arrows">
+            <button class="stepper-btn" data-action="maxBetUp"
+                    aria-label="Increase max bet"${maxBet >= 10000 ? ' disabled' : ''}>▲</button>
+            <button class="stepper-btn" data-action="maxBetDown"
+                    aria-label="Decrease max bet"${maxBet <= 100 ? ' disabled' : ''}>▼</button>
           </div>
         </div>
       </div>

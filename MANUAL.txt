@@ -490,8 +490,14 @@ NUMBER OF DECKS
    the new shoe is built. There's no extra warning before this happens, so
    finish or surrender your current hand first if you don't want to lose it.
 
-Both settings (and mute, section 12) are remembered on your device between
-sessions, the same as your bankroll.
+MAX BET
+   Use the ▲ / ▼ stepper to raise or lower the table's betting ceiling, in
+   $100 steps from $100 up to $10,000 (default $500). Unlike the deck count,
+   this takes effect immediately and never disturbs the current hand or bet —
+   it only changes what you're allowed to bet going forward.
+
+All three settings (and mute, section 12) are remembered on your device
+between sessions, the same as your bankroll.
 
 
 ==============================================================================
@@ -512,11 +518,11 @@ sessions, the same as your bankroll.
 ==============================================================================
 
 SAVING
-   Your bankroll and all of your Settings (mute, alternate soft value, number of
-   decks) are saved on your device automatically — the Settings changes save the
-   instant you make them. The bankroll is only saved at safe moments (between
-   hands), so if you close the app mid-hand, that unfinished hand is voided —
-   not charged — when you return.
+   Your bankroll and all of your Settings (mute, alternate soft value, number
+   of decks, max bet) are saved on your device automatically — the Settings
+   changes save the instant you make them. The bankroll is only saved at safe
+   moments (between hands), so if you close the app mid-hand, that unfinished
+   hand is voided — not charged — when you return.
 
 RESETTING
    Tap ↺ in the top bar (between hands) to reset your bankroll to the starting

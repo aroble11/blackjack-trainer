@@ -982,15 +982,15 @@ body {
   transform: translateX(1.2rem);
 }
 
-.deck-stepper {
+.stepper {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.deck-stepper-value {
-  min-width: 1.6rem;
+.stepper-value {
+  min-width: 2.6rem;
   text-align: center;
   font-size: 0.95rem;
   font-weight: 600;
@@ -998,13 +998,13 @@ body {
   color: var(--gold);
 }
 
-.deck-stepper-arrows {
+.stepper-arrows {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.deck-stepper-btn {
+.stepper-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1023,12 +1023,12 @@ body {
   transition: background 0.18s, border-color 0.18s;
 }
 
-.deck-stepper-btn:hover:not(:disabled) {
+.stepper-btn:hover:not(:disabled) {
   background: var(--gold-dim);
   border-color: var(--gold);
 }
 
-.deck-stepper-btn:disabled {
+.stepper-btn:disabled {
   opacity: 0.35;
   cursor: default;
   box-shadow: none;
