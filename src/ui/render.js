@@ -371,12 +371,16 @@ function renderControls(g, options) {
 }
 
 // Big center overlay shown at round-over. The headline is derived from the
-// engine's own settled figures (returnCents/stakeCents) — pure arithmetic on
-// what the engine computed, never a re-derivation of payout rules.
+// engine's own settled figures (returnCents/stakeCents/insurance*) — pure
+// arithmetic on what the engine computed, never a re-derivation of payout rules.
 function renderResultOverlay(g) {
   const hands = g.playerHands;
   if (!hands.length) return '';
-  const net = hands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0);
+  // Include the insurance side bet (wagered vs. credited back) so the headline
+  // matches the actual bankroll change — e.g. a losing hand fully hedged by
+  // insurance reads as a push, not a loss.
+  const insuranceNet = (g.insuranceReturnCents ?? 0) - (g.insuranceCents ?? 0);
+  const net = hands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0) + insuranceNet;
   let cls, text, amount = '';
   if (net > 0) {
     cls = 'won';

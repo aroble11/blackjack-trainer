@@ -42,7 +42,8 @@ export function createGame(rules, opts = {}) {
     dealerCards: [],
     dealerHoleRevealed: false,
     justReshuffled: false,
-    insuranceCents: 0,
+    insuranceCents: 0, // insurance wagered this round (0 if none)
+    insuranceReturnCents: 0, // credited back for insurance (stake + winnings), 0 if lost/none
     playerHands: [],
     activeHandIndex: 0,
   };
@@ -203,8 +204,11 @@ function resolvePeekAndNaturals(g) {
   const playerBlackjack = isBlackjack(g.playerHands[0].cards);
 
   if (g.insuranceCents > 0 && dealerBlackjack) {
-    g.bankrollCents +=
+    // Insurance wins: return the side-bet stake plus its winnings (2:1 standard).
+    // Recorded so the round-over readout can reflect it (bankroll already has it).
+    g.insuranceReturnCents =
       g.insuranceCents + Math.round(g.insuranceCents * g.rules.payouts.insurance);
+    g.bankrollCents += g.insuranceReturnCents;
   }
 
   if (dealerBlackjack || playerBlackjack) {
@@ -320,6 +324,7 @@ export function nextRound(g) {
   g.playerHands = [];
   g.activeHandIndex = 0;
   g.insuranceCents = 0;
+  g.insuranceReturnCents = 0;
   g.betCents = Math.min(g.betCents, maxBetCents(g), g.bankrollCents); // keep last bet, but affordable
   return g;
 }

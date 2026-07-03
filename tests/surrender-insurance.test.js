@@ -98,4 +98,36 @@ describe('insurance', () => {
     expect(g.playerHands[0].outcome).toBe('push'); // both blackjack
     expect(g.bankrollCents).toBe(START + 500); // push on hand, +500 net from insurance
   });
+
+  // The round-over overlay reports its net as
+  //   sum(hand.returnCents - hand.stakeCents) + (insuranceReturnCents - insuranceCents)
+  // which must equal the actual change in bankroll over the round.
+  const overlayNet = (g) =>
+    g.playerHands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0) +
+    (g.insuranceReturnCents - g.insuranceCents);
+
+  it('records the insurance return so the readout reflects it', () => {
+    const g = dealt(withInsurance, ['10S', 'AH', '6D', 'KC']); // D A,K = blackjack
+    takeInsurance(g);
+    expect(g.insuranceCents).toBe(250);
+    expect(g.insuranceReturnCents).toBe(750); // 250 stake + 500 winnings (2:1)
+    expect(overlayNet(g)).toBe(0); // fully hedged: reads as a push, not a loss
+    expect(overlayNet(g)).toBe(g.bankrollCents - START);
+  });
+
+  it('declined + dealer blackjack: no insurance return, overlay shows the full loss', () => {
+    const g = dealt(withInsurance, ['10S', 'AH', '6D', 'KC']);
+    declineInsurance(g);
+    expect(g.insuranceReturnCents).toBe(0);
+    expect(overlayNet(g)).toBe(-500);
+    expect(overlayNet(g)).toBe(g.bankrollCents - START);
+  });
+
+  it('even money: overlay net is +1 bet and matches the bankroll change', () => {
+    const g = dealt(withInsurance, ['AS', 'AH', 'KD', 'QC']); // both blackjack
+    takeInsurance(g);
+    expect(g.insuranceReturnCents).toBe(750);
+    expect(overlayNet(g)).toBe(500);
+    expect(overlayNet(g)).toBe(g.bankrollCents - START);
+  });
 });

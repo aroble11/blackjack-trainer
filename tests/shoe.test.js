@@ -148,3 +148,40 @@ describe('random cut card', () => {
     expect(shoe.cutIndex).toBe(DEEP); // back to the fixed deep cut
   });
 });
+
+describe('single-deck reshuffle floor', () => {
+  // A 1-deck shoe (52 cards) must reshuffle once <= 20 cards remain, so a hand
+  // can't draw the deck dry: the cut is capped at 52 - 20 = 32 regardless of
+  // penetration or the cut card.
+  const FLOOR_CUT = 52 - 20; // 32
+
+  it('caps the cut so >=20 cards remain, even at deep penetration', () => {
+    const shoe = createShoe({ shoe: { numberOfDecks: 1, penetration: 0.9 } }, { rng: mulberry32(1) });
+    expect(shoe.cutIndex).toBe(FLOOR_CUT); // floor(52*0.9)=46 pulled back to 32
+  });
+
+  it('applies even with the random cut card on', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const shoe = createShoe(
+        { shoe: { numberOfDecks: 1, penetration: 0.9, randomCutCard: true } },
+        { rng: mulberry32(seed) }
+      );
+      expect(shoe.cutIndex).toBe(FLOOR_CUT); // random range [34,46] is deeper, so capped to 32
+    }
+  });
+
+  it('reshuffle triggers once 20 or fewer cards remain', () => {
+    const shoe = createShoe({ shoe: { numberOfDecks: 1, penetration: 0.9 } }, { rng: mulberry32(2) });
+    for (let i = 0; i < 31; i++) draw(shoe); // pos 31 -> 21 cards remain
+    expect(cardsRemaining(shoe)).toBe(21);
+    expect(needsReshuffle(shoe)).toBe(false);
+    draw(shoe); // pos 32 -> 20 cards remain
+    expect(cardsRemaining(shoe)).toBe(20);
+    expect(needsReshuffle(shoe)).toBe(true);
+  });
+
+  it('does not affect multi-deck shoes', () => {
+    const shoe = createShoe({ shoe: { numberOfDecks: 6, penetration: 0.9 } }, { rng: mulberry32(1) });
+    expect(shoe.cutIndex).toBe(Math.floor(312 * 0.9)); // 280 — no floor applied
+  });
+});

@@ -63,7 +63,7 @@ export function createShoe(rules, { rng = Math.random, cards } = {}) {
     cards: deck,
     pos: 0,
     seenCards: [], // cards the player has SEEN this shoe (for counting): appended as revealed, cleared on reshuffle
-    cutIndex: pickCutIndex(deck.length, penetration, randomCutCard, rng),
+    cutIndex: pickCutIndex(deck.length, penetration, randomCutCard, rng, numberOfDecks),
     rng,
     numberOfDecks,
     penetration,
@@ -76,19 +76,33 @@ export function createShoe(rules, { rng = Math.random, cards } = {}) {
 // random cut card may land.
 const LAST_THIRD = 2 / 3;
 
+// A single-deck shoe reshuffles once this few cards remain, so a hand can never
+// run the deck dry mid-round (the live game only reshuffles between rounds).
+// Multi-deck shoes have a much larger natural buffer and don't need this floor.
+const SINGLE_DECK_MIN_REMAINING = 20;
+
 /**
  * Choose where the cut card sits (the draw index that triggers a between-rounds
  * reshuffle). With randomCutCard OFF this is the fixed `penetration` depth — the
  * historical behavior. With it ON, the cut lands at a uniformly random position
  * in the last third of the shoe, but never deeper than `penetration` (the safe
  * cap), so a buffer of cards always remains and the shoe can't exhaust mid-hand.
+ *
+ * For a single deck the cut is additionally pulled no deeper than
+ * `length - SINGLE_DECK_MIN_REMAINING`, guaranteeing ≥20 cards remain when a
+ * round is dealt (a 1-deck round can otherwise draw past the end).
  */
-function pickCutIndex(length, penetration, randomCutCard, rng) {
+function pickCutIndex(length, penetration, randomCutCard, rng, numberOfDecks) {
   const deep = Math.floor(length * penetration);
-  if (!randomCutCard) return deep;
-  const lo = Math.floor(length * LAST_THIRD);
-  if (deep <= lo) return deep; // degenerate/tiny shoe: fall back to the deep cut
-  return lo + Math.floor(rng() * (deep - lo + 1)); // random in [lo, deep]
+  let cut = deep;
+  if (randomCutCard) {
+    const lo = Math.floor(length * LAST_THIRD);
+    cut = deep <= lo ? deep : lo + Math.floor(rng() * (deep - lo + 1)); // random in [lo, deep]
+  }
+  if (numberOfDecks === 1 && length > SINGLE_DECK_MIN_REMAINING) {
+    cut = Math.min(cut, length - SINGLE_DECK_MIN_REMAINING);
+  }
+  return cut;
 }
 
 /**
@@ -98,7 +112,7 @@ function pickCutIndex(length, penetration, randomCutCard, rng) {
  */
 export function setRandomCutCard(shoe, on) {
   shoe.randomCutCard = on;
-  shoe.cutIndex = pickCutIndex(shoe.cards.length, shoe.penetration, on, shoe.rng);
+  shoe.cutIndex = pickCutIndex(shoe.cards.length, shoe.penetration, on, shoe.rng, shoe.numberOfDecks);
   return shoe;
 }
 
@@ -134,6 +148,12 @@ export function reshuffle(shoe) {
   shoe.seenCards = []; // a fresh shoe — the running count starts over
   // Re-pick the cut so each fresh shoe gets a new random cut card (a no-op for
   // the fixed-penetration cut when randomCutCard is off).
-  shoe.cutIndex = pickCutIndex(shoe.cards.length, shoe.penetration, shoe.randomCutCard, shoe.rng);
+  shoe.cutIndex = pickCutIndex(
+    shoe.cards.length,
+    shoe.penetration,
+    shoe.randomCutCard,
+    shoe.rng,
+    shoe.numberOfDecks
+  );
   return shoe;
 }
