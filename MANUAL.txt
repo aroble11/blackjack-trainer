@@ -492,9 +492,24 @@ NUMBER OF DECKS
 
 MAX BET
    Use the ▲ / ▼ stepper to raise or lower the table's betting ceiling, in
-   $100 steps from $100 up to $10,000 (default $500). Unlike the deck count,
+   $50 steps from $100 up to $10,000 (default $500). Unlike the deck count,
    this takes effect immediately and never disturbs the current hand or bet —
    it only changes what you're allowed to bet going forward.
+
+STARTING AMOUNT
+   Use the ▲ / ▼ stepper to set the bankroll you begin with, in $50 steps
+   from $100 up to $10,000 (default $500). Changing it fully restarts the
+   game — your bankroll is reset to the new amount and the shoe is rebuilt —
+   the moment you close the panel, the same way a deck-count change does
+   (you'll see a "NEW GAME" pause). This happens even between rounds, and any
+   hand in progress is abandoned. If the new starting amount is below your
+   current max bet, the max bet is lowered to match.
+
+SHOW STARTING AMOUNT
+   Off by default. When on, your starting amount is shown as a small "start
+   $XXX" label next to your bankroll in the top bar, so you always have your
+   reference point in view. This only changes the display; it has no effect on
+   play.
 
 SHOW CARD COUNT
    Shows or hides the Hi-Lo readout (section 9) — on by default. Turning it
@@ -504,7 +519,7 @@ SHOW CARD COUNT
    grayed out and does nothing if card counting isn't turned on for the
    table in the first place (or the shoe uses a continuous shuffler).
 
-All four settings (and mute, section 12) are remembered on your device
+All of these settings (and mute, section 12) are remembered on your device
 between sessions, the same as your bankroll.
 
 
@@ -527,11 +542,11 @@ between sessions, the same as your bankroll.
 
 SAVING
    Your bankroll and all of your Settings (mute, alternate soft value, number
-   of decks, max bet, show card count) are saved on your device
-   automatically — the Settings changes save the instant you make them. The
-   bankroll is only saved at safe moments (between hands), so if you close
-   the app mid-hand, that unfinished hand is voided — not charged — when you
-   return.
+   of decks, max bet, starting amount, show starting amount, show card count)
+   are saved on your device automatically — the Settings changes save the
+   instant you make them. The bankroll is only saved at safe moments (between
+   hands), so if you close the app mid-hand, that unfinished hand is voided —
+   not charged — when you return.
 
 RESETTING
    Tap ↺ in the top bar (between hands) to reset your bankroll to the starting

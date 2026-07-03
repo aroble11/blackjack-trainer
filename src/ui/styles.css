@@ -84,6 +84,12 @@ body {
   padding: 0.25rem 0.25rem 0.5rem;
 }
 
+.bankroll-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
 .bankroll {
   font-size: 1.35rem;
   font-weight: 800;
@@ -95,6 +101,15 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 5px rgba(0, 0, 0, 0.3);
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
   letter-spacing: 0.01em;
+}
+
+.bankroll-start {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gold);
+  opacity: 0.6;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .topbar-actions {

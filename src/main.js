@@ -18,6 +18,8 @@ async function start() {
     numberOfDecks: RULES.shoe.numberOfDecks,
     maxBet: RULES.table.maxBet,
     showCardCount: true,
+    startingAmount: RULES.table.startingBankroll,
+    showStartingAmount: false,
   };
 
   // Restore settings from a previous session BEFORE building the game/shoe, so a
@@ -32,9 +34,21 @@ async function start() {
   if (Number.isInteger(settings.numberOfDecks)) {
     RULES.shoe.numberOfDecks = Math.max(1, Math.min(99, settings.numberOfDecks));
   }
+  // Same guard for a persisted starting amount: an integer in [100, 10000].
+  // Must run BEFORE createGame, which reads startingBankroll for the opening
+  // bankroll. (A separately-persisted bankrollCents still overrides the live
+  // bankroll below, so this only sets the reference used by resets/rebuys.)
+  if (Number.isInteger(settings.startingAmount)) {
+    RULES.table.startingBankroll = Math.max(100, Math.min(10000, settings.startingAmount));
+  }
   // Same guard for a persisted max bet: an integer in [100, 10000].
   if (Number.isInteger(settings.maxBet)) {
     RULES.table.maxBet = Math.max(100, Math.min(10000, settings.maxBet));
+  }
+  // Keep the two consistent even if storage is stale: max bet never exceeds the
+  // starting amount (mirrors the live auto-clamp when lowering the start).
+  if (RULES.table.maxBet > RULES.table.startingBankroll) {
+    settings.maxBet = RULES.table.maxBet = RULES.table.startingBankroll;
   }
   setMuted(settings.muted);
 

@@ -38,6 +38,7 @@ import {
   abandonRound,
   rebuildShoe,
 } from '../engine/game.js';
+// (resetBankroll is reused by the starting-amount restart below.)
 import { bestAction } from '../teaching/advisor.js';
 import { runSimulation } from '../sim/simulator.js';
 import { needsReshuffle } from '../engine/shoe.js';
@@ -52,26 +53,35 @@ export function mount(root, game, options = {}) {
     view: 'table',
     settingsShown: false,
     decksOnOpen: null, // deck count snapshotted when settings was last opened
+    startOnOpen: null, // starting amount snapshotted when settings was last opened
     reshuffling: false,
+    reshuffleMessage: 'RESHUFFLE', // overlay text for the on-close restart pause
     sim: { system: 'martingale', sessions: 2000, hands: 100, result: null, running: false },
   });
 
-  // Reshuffle the moment settings closes IF the deck count differs from what it
-  // was when settings opened (ui.decksOnOpen) — not from the shoe's current
-  // size, which can drift after a mid-hand change. Bumping 6→5→6 and closing
-  // nets no change, so nothing fires. A reshuffle can't keep cards that are in
-  // play, so if a hand is in progress it's abandoned (the committed stake is
-  // forfeited as a loss) before the rebuild. Returns true if it fired (the
-  // caller should skip its own render — this one renders itself).
+  // Restart the moment settings closes IF the deck count OR the starting amount
+  // differs from what it was when settings opened (ui.decksOnOpen /
+  // ui.startOnOpen) — not from current live values, which can drift after a
+  // mid-hand change. Bumping a value away and back nets no change, so nothing
+  // fires. Either change rebuilds the shoe, and a shoe rebuild can't keep cards
+  // in play, so any hand in progress is abandoned (its committed stake is
+  // forfeited as a loss) first. A starting-amount change additionally resets the
+  // bankroll to the new starting amount — a full "NEW GAME" — even between
+  // rounds. Returns true if it fired (the caller should skip its own render —
+  // this one renders itself).
   function reshuffleNowIfChanged() {
-    const changed = !!settings && settings.numberOfDecks !== ui.decksOnOpen;
-    if (!changed || game.shoe.continuousShuffle) return false;
+    if (!settings) return false;
+    const decksChanged = settings.numberOfDecks !== ui.decksOnOpen;
+    const startChanged = settings.startingAmount !== ui.startOnOpen;
+    if ((!decksChanged && !startChanged) || game.shoe.continuousShuffle) return false;
+    ui.reshuffleMessage = startChanged ? 'NEW GAME' : 'RESHUFFLE';
     ui.reshuffling = true;
     render(root, game, options);
     sound.shuffle();
     setTimeout(() => {
       ui.reshuffling = false;
       if (game.phase !== Phase.Betting) abandonRound(game); // drop any hand in progress
+      if (startChanged) resetBankroll(game); // Betting phase guaranteed by now
       rebuildShoe(game);
       if (persist) persist();
       render(root, game, options);
@@ -108,7 +118,9 @@ export function mount(root, game, options = {}) {
       const wasShown = ui.settingsShown;
       ui.settingsShown = !ui.settingsShown;
       if (!wasShown) {
-        ui.decksOnOpen = settings ? settings.numberOfDecks : null; // snapshot on open
+        // snapshot the values whose change triggers a full restart on close
+        ui.decksOnOpen = settings ? settings.numberOfDecks : null;
+        ui.startOnOpen = settings ? settings.startingAmount : null;
       } else if (reshuffleNowIfChanged()) {
         return; // closing via the gear toggle
       }
@@ -133,6 +145,12 @@ export function mount(root, game, options = {}) {
       render(root, game, options);
       return;
     }
+    if (action === 'toggleShowStartAmount') {
+      if (settings) settings.showStartingAmount = !settings.showStartingAmount;
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
     if (action === 'decksUp' || action === 'decksDown') {
       if (settings) {
         const next = clamp(settings.numberOfDecks + (action === 'decksUp' ? 1 : -1), 1, 99);
@@ -149,9 +167,27 @@ export function mount(root, game, options = {}) {
     // touches a bet already placed.
     if (action === 'maxBetUp' || action === 'maxBetDown') {
       if (settings) {
-        const next = clamp(settings.maxBet + (action === 'maxBetUp' ? 100 : -100), 100, 10000);
+        const next = clamp(settings.maxBet + (action === 'maxBetUp' ? 50 : -50), 100, 10000);
         settings.maxBet = next;
         game.rules.table.maxBet = next; // live reference
+      }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+    // The starting amount is stepped live in the panel (in $50 increments), but
+    // the actual "NEW GAME" restart (bankroll reset + shoe rebuild) is deferred
+    // to when settings closes — see reshuffleNowIfChanged(). Lowering it below
+    // the current max bet clamps max bet down to match, immediately.
+    if (action === 'startAmountUp' || action === 'startAmountDown') {
+      if (settings) {
+        const next = clamp(settings.startingAmount + (action === 'startAmountUp' ? 50 : -50), 100, 10000);
+        settings.startingAmount = next;
+        game.rules.table.startingBankroll = next; // live reference (used by resets/rebuys)
+        if (settings.maxBet > next) {
+          settings.maxBet = next;
+          game.rules.table.maxBet = next; // auto-clamp: max bet can't exceed the start
+        }
       }
       if (persist) persist();
       render(root, game, options);

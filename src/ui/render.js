@@ -200,6 +200,8 @@ function renderSettingsPanel(g, options) {
   const on = options.settings?.softDisplayBothValues ?? false;
   const decks = options.settings?.numberOfDecks ?? 6;
   const maxBet = options.settings?.maxBet ?? 500;
+  const startAmount = options.settings?.startingAmount ?? 500;
+  const showStart = options.settings?.showStartingAmount ?? false;
   const showCount = options.settings?.showCardCount ?? true;
   const t = g.rules.teaching || {};
   const countingActive = t.showCardCounting && t.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle;
@@ -230,6 +232,25 @@ function renderSettingsPanel(g, options) {
                     aria-label="Decrease number of decks"${decks <= 1 ? ' disabled' : ''}>▼</button>
           </div>
         </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Starting amount</span>
+        <div class="stepper">
+          <span class="stepper-value">${formatMoney(startAmount * 100)}</span>
+          <div class="stepper-arrows">
+            <button class="stepper-btn" data-action="startAmountUp"
+                    aria-label="Increase starting amount"${startAmount >= 10000 ? ' disabled' : ''}>▲</button>
+            <button class="stepper-btn" data-action="startAmountDown"
+                    aria-label="Decrease starting amount"${startAmount <= 100 ? ' disabled' : ''}>▼</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Show starting amount</span>
+        <button class="settings-toggle${showStart ? ' on' : ''}" data-action="toggleShowStartAmount"
+                role="switch" aria-checked="${showStart}">
+          <span class="toggle-knob"></span>
+        </button>
       </div>
       <div class="settings-row">
         <span class="settings-label">Max bet</span>
@@ -362,10 +383,12 @@ function renderResultOverlay(g) {
 }
 
 // Shown in place of the felt branding while controls.js holds the 2s pause
-// for a reshuffle — same markup/style as the round-over overlay above.
-function renderReshuffleOverlay() {
+// for a reshuffle/restart — same markup/style as the round-over overlay above.
+// The message is "RESHUFFLE" for a deck change, "NEW GAME" for a starting-amount
+// change (which also resets the bankroll).
+function renderReshuffleOverlay(message = 'RESHUFFLE') {
   return `<div class="result-overlay reshuffle" role="status">
-      <span class="result-text">RESHUFFLE</span>
+      <span class="result-text">${message}</span>
     </div>`;
 }
 
@@ -628,9 +651,16 @@ export function render(root, g, options = {}) {
   const warnings = options.warnings ?? [];
   const muted = options.settings?.muted ?? false;
   const settingsShown = options.ui?.settingsShown ?? false;
+  const showStart = options.settings?.showStartingAmount ?? false;
+  const startLabel = showStart
+    ? `<span class="bankroll-start">start ${formatMoney(g.rules.table.startingBankroll * 100)}</span>`
+    : '';
   root.innerHTML = `<div class="game">
       <header class="topbar">
-        <span class="bankroll">${formatMoney(g.bankrollCents)}</span>
+        <span class="bankroll-group">
+          <span class="bankroll">${formatMoney(g.bankrollCents)}</span>
+          ${startLabel}
+        </span>
         <span class="topbar-actions">
           <span class="rules-chip">${rulesChip(g.rules)}</span>
           <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">📊</button>
@@ -655,7 +685,7 @@ export function render(root, g, options = {}) {
         ${renderDealer(g, options)}
         ${
           options.ui?.reshuffling
-            ? renderReshuffleOverlay()
+            ? renderReshuffleOverlay(options.ui?.reshuffleMessage)
             : g.phase === Phase.RoundOver
               ? renderResultOverlay(g)
               : feltBranding(g.rules)
