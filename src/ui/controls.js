@@ -127,6 +127,12 @@ export function mount(root, game, options = {}) {
       render(root, game, options);
       return;
     }
+    if (action === 'toggleCardCount') {
+      if (settings) settings.showCardCount = !settings.showCardCount;
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
     if (action === 'decksUp' || action === 'decksDown') {
       if (settings) {
         const next = clamp(settings.numberOfDecks + (action === 'decksUp' ? 1 : -1), 1, 99);

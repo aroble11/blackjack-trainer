@@ -17,6 +17,7 @@ async function start() {
     softDisplayBothValues: false,
     numberOfDecks: RULES.shoe.numberOfDecks,
     maxBet: RULES.table.maxBet,
+    showCardCount: true,
   };
 
   // Restore settings from a previous session BEFORE building the game/shoe, so a

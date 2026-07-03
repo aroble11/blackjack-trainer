@@ -496,7 +496,15 @@ MAX BET
    this takes effect immediately and never disturbs the current hand or bet —
    it only changes what you're allowed to bet going forward.
 
-All three settings (and mute, section 12) are remembered on your device
+SHOW CARD COUNT
+   Shows or hides the Hi-Lo readout (section 9) — on by default. Turning it
+   off just hides the words and numbers; the count itself keeps tracking
+   every card you see in the background, so turning it back on mid-shoe
+   picks up exactly where it would have been the whole time. This toggle is
+   grayed out and does nothing if card counting isn't turned on for the
+   table in the first place (or the shoe uses a continuous shuffler).
+
+All four settings (and mute, section 12) are remembered on your device
 between sessions, the same as your bankroll.
 
 
@@ -519,10 +527,11 @@ between sessions, the same as your bankroll.
 
 SAVING
    Your bankroll and all of your Settings (mute, alternate soft value, number
-   of decks, max bet) are saved on your device automatically — the Settings
-   changes save the instant you make them. The bankroll is only saved at safe
-   moments (between hands), so if you close the app mid-hand, that unfinished
-   hand is voided — not charged — when you return.
+   of decks, max bet, show card count) are saved on your device
+   automatically — the Settings changes save the instant you make them. The
+   bankroll is only saved at safe moments (between hands), so if you close
+   the app mid-hand, that unfinished hand is voided — not charged — when you
+   return.
 
 RESETTING
    Tap ↺ in the top bar (between hands) to reset your bankroll to the starting

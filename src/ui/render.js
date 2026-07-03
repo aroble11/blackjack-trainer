@@ -196,10 +196,13 @@ function surrenderFab() {
   return `<button class="btn icon surrender-fab" data-action="surrender" aria-label="Surrender" title="Surrender">🏳️</button>`;
 }
 
-function renderSettingsPanel(options) {
+function renderSettingsPanel(g, options) {
   const on = options.settings?.softDisplayBothValues ?? false;
   const decks = options.settings?.numberOfDecks ?? 6;
   const maxBet = options.settings?.maxBet ?? 500;
+  const showCount = options.settings?.showCardCount ?? true;
+  const t = g.rules.teaching || {};
+  const countingActive = t.showCardCounting && t.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle;
   return `<div class="settings-panel">
       <div class="settings-row">
         <span class="settings-label">Alternate soft value</span>
@@ -209,6 +212,13 @@ function renderSettingsPanel(options) {
         </button>
       </div>
       <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
+      <div class="settings-row">
+        <span class="settings-label">Show card count</span>
+        <button class="settings-toggle${showCount ? ' on' : ''}" data-action="toggleCardCount"
+                role="switch" aria-checked="${showCount}"${countingActive ? '' : ' disabled'}>
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
       <div class="settings-row">
         <span class="settings-label">Number of decks</span>
         <div class="stepper">
@@ -411,9 +421,10 @@ function fmtTrue(n) {
  * straight from the shoe's seen cards, so it reflects exactly what the player
  * has seen — the hole card only once it's revealed.
  */
-function renderCount(g) {
+function renderCount(g, options) {
   const t = g.rules.teaching || {};
-  if (!t.showCardCounting || t.countingSystem === 'none' || g.rules.shoe.continuousShuffle) {
+  const showCount = options.settings?.showCardCount ?? true;
+  if (!t.showCardCounting || t.countingSystem === 'none' || g.rules.shoe.continuousShuffle || !showCount) {
     return '';
   }
   const { running, trueCount, decksRemaining } = countFromShoe(g.shoe, t.countingSystem);
@@ -460,7 +471,7 @@ function roundedPolygonPath(pts, r) {
   return parts.join(' ');
 }
 
-function renderDeckStack(g) {
+function renderDeckStack(g, options) {
   if (g.shoe.continuousShuffle) return '';
   const total = g.shoe.cards.length;
   const deckPct = Math.max(0, Math.min(1, (total - g.shoe.pos) / total));
@@ -469,7 +480,8 @@ function renderDeckStack(g) {
   // Rendered outside .table-area so it can bleed past the screen edge; the SVG
   // is then rotated 45° via CSS from its top-right corner anchor.
   const t = g.rules.teaching || {};
-  const countBarShown = t.showCardCounting && t.countingSystem !== 'none';
+  const showCount = options.settings?.showCardCount ?? true;
+  const countBarShown = t.showCardCounting && t.countingSystem !== 'none' && showCount;
   const topOffset = countBarShown ? '5.5rem' : '3.2rem';
   const D = deckPct * 24;
   const hD = D / 2;
@@ -632,8 +644,8 @@ export function render(root, g, options = {}) {
         </span>
       </header>
       ${settingsShown ? '<div class="settings-backdrop" data-action="closeSettings"></div>' : ''}
-      ${settingsShown ? renderSettingsPanel(options) : ''}
-      ${renderCount(g)}
+      ${settingsShown ? renderSettingsPanel(g, options) : ''}
+      ${renderCount(g, options)}
       ${
         options.ui?.deviation
           ? `<div class="deviation-note" role="status">Basic strategy here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`
@@ -650,7 +662,7 @@ export function render(root, g, options = {}) {
         }
         ${renderPlayer(g, options)}
       </div>
-      ${renderDeckStack(g)}
+      ${renderDeckStack(g, options)}
       ${renderControls(g, options)}
       ${
         warnings.length
