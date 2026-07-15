@@ -876,7 +876,10 @@ body {
 }
 
 .hint-panel {
-  width: 100%;
+  /* Reserve the right edge for the floating surrender/hint buttons:
+     their 2px offset + 2.2rem width (from .btn.icon), plus a 0.75rem gap that
+     mirrors the panel's left inset (the .game horizontal padding). */
+  width: calc(100% - 2px - 2.2rem - 0.75rem);
   padding: 0.6rem 0.8rem;
   border: 1px solid rgba(232, 198, 106, 0.5);
   border-radius: 10px;
