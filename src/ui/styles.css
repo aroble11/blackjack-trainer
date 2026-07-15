@@ -1002,6 +1002,30 @@ body {
   cursor: default;
 }
 
+/* The hint-strategy dropdown; native popup, panel-styled closed state. */
+.settings-select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 58%;
+  padding: 0.3rem 0.4rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.settings-select:disabled {
+  opacity: 0.35;
+}
+
+.settings-select option {
+  color: #1a1a1a;
+  background: #f5f3ec;
+}
+
 .toggle-knob {
   position: absolute;
   top: 2px;

@@ -20,7 +20,7 @@ import {
   isBroke,
   activeHand,
 } from '../engine/game.js';
-import { bestAction } from '../teaching/advisor.js';
+import { recommend, listStrategies } from '../teaching/strategies.js';
 import { explainAction } from '../teaching/explain.js';
 import { countFromShoe } from '../teaching/counting.js';
 import { buildHistogram } from '../sim/histogram.js';
@@ -204,6 +204,7 @@ function renderSettingsPanel(g, options) {
   const showStart = options.settings?.showStartingAmount ?? false;
   const showCount = options.settings?.showCardCount ?? true;
   const cutCard = options.settings?.randomCutCard ?? false;
+  const strategy = options.settings?.strategy ?? 'basic';
   const t = g.rules.teaching || {};
   const countingActive = t.showCardCounting && t.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle;
   const shoeDepletes = !g.rules.shoe.continuousShuffle;
@@ -277,7 +278,24 @@ function renderSettingsPanel(g, options) {
         </button>
       </div>
       <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
+      <div class="settings-section">Teaching</div>
+      <div class="settings-row">
+        <span class="settings-label">Hint strategy</span>
+        <select class="settings-select" data-action="selectStrategy" aria-label="Hint strategy"${
+          t.showBasicStrategyHints ? '' : ' disabled'
+        }>
+          ${listStrategies()
+            .map((s) => `<option value="${s.id}"${s.id === strategy ? ' selected' : ''}>${s.label}</option>`)
+            .join('')}
+        </select>
+      </div>
     </div>`;
+}
+
+/** The selected hint strategy's label ('Basic strategy' unless the user picked another). */
+function selectedStrategyLabel(options) {
+  const id = options.settings?.strategy ?? 'basic';
+  return listStrategies().find((s) => s.id === id)?.label ?? 'Basic strategy';
 }
 
 // The revealed hint panel (shown only after the lightbulb is tapped).
@@ -286,14 +304,28 @@ function renderHintPanel(g, options) {
   if (!teaching.showBasicStrategyHints || !options.ui?.hintShown) return '';
   const hand = activeHand(g);
   if (!hand || !g.dealerCards[0]) return '';
-  const rec = bestAction(hand.cards, g.dealerCards[0], g.rules, { fromSplit: hand.fromSplit });
-  const why = teaching.explainHints
-    ? `<p class="hint-why">${explainAction(rec, g.dealerCards[0])}</p>`
-    : '';
+  const rec = recommend(options.settings?.strategy ?? 'basic', hand.cards, g.dealerCards[0], g.rules, {
+    fromSplit: hand.fromSplit,
+  });
+  // A chart that doesn't cover this hand falls back to computed basic strategy,
+  // and the panel says so — never pass off a fallback as the user's chart.
+  const showComputed = !rec.isUserDefined || rec.fallback;
+  const lines = [];
+  if (rec.fallback) {
+    lines.push(`<p class="hint-why">“${rec.label}” doesn't cover this hand — showing the computed basic strategy.</p>`);
+  }
+  if (showComputed && teaching.explainHints) {
+    lines.push(`<p class="hint-why">${explainAction(rec, g.dealerCards[0])}</p>`);
+  } else if (!showComputed && rec.note) {
+    lines.push(`<p class="hint-why">${rec.note}</p>`);
+  }
+  const caveat = showComputed
+    ? 'Computed from your rules — cross-check an authoritative chart for the closest calls.'
+    : 'User-defined strategy — not verified as optimal.';
   return `<div class="hint-panel">
-      <p class="hint-move">Basic strategy: <strong>${ACTION_LABEL[rec.action]}</strong></p>
-      ${why}
-      <p class="hint-caveat">Computed from your rules — cross-check an authoritative chart for the closest calls.</p>
+      <p class="hint-move">${rec.fallback ? 'Basic strategy' : rec.label}: <strong>${ACTION_LABEL[rec.action]}</strong></p>
+      ${lines.join('\n      ')}
+      <p class="hint-caveat">${caveat}</p>
     </div>`;
 }
 
@@ -695,7 +727,7 @@ export function render(root, g, options = {}) {
       ${renderCount(g, options)}
       ${
         options.ui?.deviation
-          ? `<div class="deviation-note" role="status">Basic strategy here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`
+          ? `<div class="deviation-note" role="status">${selectedStrategyLabel(options)} here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`
           : ''
       }
       <div class="table-area">

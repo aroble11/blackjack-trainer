@@ -5,6 +5,7 @@ import { createGame, Phase } from './engine/game.js';
 import { mount } from './ui/controls.js';
 import { loadPersisted, savePersisted } from './persistence/persist.js';
 import { setMuted } from './assets/sound.js';
+import { listStrategies } from './teaching/strategies.js';
 
 // Startup capability guard: warn (console + on-screen) about any config option
 // the engine does not implement, so the app never silently mis-plays.
@@ -21,6 +22,7 @@ async function start() {
     startingAmount: RULES.table.startingBankroll,
     showStartingAmount: false,
     randomCutCard: RULES.shoe.randomCutCard,
+    strategy: 'basic', // which hint strategy the panel shows (see src/teaching/strategies.js)
   };
 
   // Restore settings from a previous session BEFORE building the game/shoe, so a
@@ -55,6 +57,11 @@ async function start() {
   // starting amount (mirrors the live auto-clamp when lowering the start).
   if (RULES.table.maxBet > RULES.table.startingBankroll) {
     settings.maxBet = RULES.table.maxBet = RULES.table.startingBankroll;
+  }
+  // A persisted strategy id that no longer exists (a renamed/removed user
+  // strategy, or corrupt storage) falls back to the computed basic strategy.
+  if (!listStrategies().some((s) => s.id === settings.strategy)) {
+    settings.strategy = 'basic';
   }
   setMuted(settings.muted);
 

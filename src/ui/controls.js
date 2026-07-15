@@ -39,7 +39,7 @@ import {
   rebuildShoe,
 } from '../engine/game.js';
 // (resetBankroll is reused by the starting-amount restart below.)
-import { bestAction } from '../teaching/advisor.js';
+import { recommend } from '../teaching/strategies.js';
 import { runSimulation } from '../sim/simulator.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 
@@ -263,7 +263,7 @@ export function mount(root, game, options = {}) {
     }
 
     // For deviation warnings, capture the recommended move BEFORE applying it.
-    const recommended = recommendedMove(game, action);
+    const recommended = recommendedMove(game, action, settings);
 
     apply(game, action, el.dataset.value);
     playSound(game, action);
@@ -275,19 +275,32 @@ export function mount(root, game, options = {}) {
     game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
   });
 
+  // The strategy dropdown is the one control that fires `change`, not click —
+  // a single delegated listener, mirroring the click one above.
+  root.addEventListener('change', (event) => {
+    const el = event.target.closest('[data-action="selectStrategy"]');
+    if (!el) return;
+    if (settings) settings.strategy = el.value;
+    if (persist) persist();
+    render(root, game, options);
+  });
+
   render(root, game, options);
 }
 
 const DECISIONS = ['hit', 'stand', 'double', 'split', 'surrender'];
 
-/** The basic-strategy move for the current decision, or null if not applicable. */
-function recommendedMove(game, action) {
+/** The selected hint strategy's move for the current decision, or null if not applicable. */
+function recommendedMove(game, action, settings) {
   if (!DECISIONS.includes(action)) return null;
   if (!game.rules.teaching?.warnOnStrategyDeviation) return null;
   if (game.phase !== Phase.PlayerTurn) return null;
   const hand = activeHand(game);
   if (!hand || !game.dealerCards[0]) return null;
-  const best = bestAction(hand.cards, game.dealerCards[0], game.rules, { fromSplit: hand.fromSplit }).action;
+  // Deviation warnings follow whichever strategy the user selected in Settings.
+  const best = recommend(settings?.strategy ?? 'basic', hand.cards, game.dealerCards[0], game.rules, {
+    fromSplit: hand.fromSplit,
+  }).action;
   // The advisor recommends by EV alone (it ignores bankroll/limits). Don't flag a
   // "deviation" toward a move the player can't actually make here — e.g. it says
   // double/split but the bankroll or re-split cap forbids it. hit/stand are always
