@@ -22,9 +22,9 @@ export const baseRules = {
 
 /** Clone baseRules, shallow-merging each overridden group (e.g. { dealer: { hitsSoft17: true } }). */
 export function withRules(overrides = {}) {
-  const merged = { ...baseRules };
+  const merged = structuredClone(baseRules);
   for (const key of Object.keys(overrides)) {
-    merged[key] = { ...baseRules[key], ...overrides[key] };
+    merged[key] = { ...merged[key], ...structuredClone(overrides[key]) };
   }
   return merged;
 }

@@ -5,7 +5,7 @@ for mobile (Android Chrome; iOS Safari supported). Personal learning tool — ch
 only, no real money. The full vision and phase plan live in
 [`blackjack-trainer-spec.md`](blackjack-trainer-spec.md).
 
-**Status: Phases 1–5 + the Phase 7 casino-style redesign complete** — a correct,
+**Status: Phases 1–5, the casino-style redesign, and the pre-release correctness milestone complete** — a correct,
 unit-tested game of blackjack with a mobile-first **casino-table UI** (felt with a
 wood rail, curved felt branding, realistic pip-layout cards & chips, hand-total
 bubbles, color-coded action buttons, and round-result overlays), animations,
@@ -17,7 +17,7 @@ thousands of sessions. Only Phase 6 (hosting + real-device install) remains (see
 
 ## Quick start
 
-Requires **Node 18+** (built with Node 24 LTS) and npm.
+Requires **Node 20.19+ or 22.12+** and npm (see `package.json` for the engine range).
 
 ```bash
 npm install
@@ -72,6 +72,29 @@ The **bankroll and mute setting persist** across sessions via IndexedDB (an
 interrupted hand is voided, not charged, on reload). Use the topbar **↺** to reset
 to the starting bankroll.
 
+## In-app settings and release fixes
+
+Settings controls deck count, cut card, starting bankroll, maximum wager, count
+visibility, soft-total display, and hint strategy. Deck changes wait until the
+next betting round. A changed starting amount resets the bankroll only after
+the current hand settles. Lowering the maximum clamps a pending wager without
+altering stakes already committed. Escape or Done closes Settings; switches
+have accessible names and keyboard focus survives renders.
+
+The engine reserves cards in every shoe. If an unusually long round still
+exhausts it, the **whole round is voided and every stake refunded** before a fresh
+shoe is built. The same recovery is used by live play and simulation.
+
+Hints, deviation warnings, and simulations share engine legality. They consider
+legal re-splits and recommend affordable alternatives when double/split is
+unavailable. Custom charts are data in
+[config/user-strategies.config.js](config/user-strategies.config.js); uncovered
+hands fall back to computed strategy with a visible explanation.
+
+Saved settings are whitelisted and normalized before both the UI and rules use
+them. The UI has bounded mobile panels, larger steppers, focus restoration,
+and a clear offline/update status.
+
 ## Project layout
 
 ```
@@ -84,7 +107,7 @@ src/
                · sound.js (Web Audio effects)
   persistence/ store.js (tiny IndexedDB key/value) · persist.js (bankroll + settings)
   teaching/    computed basic strategy + Hi-Lo counting: probabilities · dealer-odds ·
-               ev · advisor · explain · counting
+               ev · finite-deck · advisor · explain · counting
   sim/         headless Monte Carlo betting simulator: betting-systems · simulator ·
                histogram (+ a seeded rng)
   ui/          DOM rendering (render.js) + input/audio wiring (controls.js)
@@ -114,12 +137,17 @@ the peek), then compares the expected value of standing, hitting, doubling,
 splitting, and surrendering and recommends the highest. So it adapts to H17/S17,
 DAS, surrender, and the double restriction. It lives in [`src/teaching/`](src/teaching).
 
-It is validated cell-by-cell against the canonical 6-deck S17 DAS chart in the tests
-(hard, soft, pairs, surrender, and H17/S17/DAS sensitivity). Two honest caveats:
+Validation uses selected canonical strategy anchors, numerical finite-deck EV references,
+and legal-action regressions. It is not an exhaustive cell-by-cell certification.
+See [Strategy model and validation](docs/strategy-model.md). Model boundaries:
 
 - The closest decisions (e.g. **A,2 vs 5**) sit within ~0.01 EV; the infinite-deck
   model may pick the opposite of a given chart on those.
-- Single/double-deck composition effects (a few cells) are not modeled.
+- **One/two decks:** exact stand/hit/double calculations for the active hand and
+  upcard, drawing without replacement and conditioning on the US peek. Split
+  calculations approximate sibling-hand histories, as the in-app hint explains.
+- **Three or more decks:** infinite-deck approximation; finite-card composition
+  effects are not modeled. Previous-round cards do not alter basic-strategy hints.
 
 **Cross-check the hints against an authoritative chart for your exact ruleset before
 relying on them** — teaching a wrong move is the worst possible bug. Toggle the
@@ -149,11 +177,16 @@ real game engine — every hand by basic strategy, the system only choosing the 
 and charts the **distribution of final profit/loss**, with summary stats (mean,
 median, ruin rate, best/worst).
 
-It makes the Martingale trap vivid: *most* sessions win a little (a positive
-**median**), but a large share **bust the whole bankroll** (the spike at the left,
-e.g. −$500), so the **mean** still loses — and worse than flat betting. The table
-maximum (`table.maxBet`) caps the doubling. Each run is a fresh Monte Carlo draw, so
-numbers vary run to run. It simulates your configured rules, shown in the header.
+The chart shows how a progression can accumulate small wins and deep losses.
+The exact median, mean, and ruin rate depend on the selected rules, horizon, and
+random run; they are not guaranteed signs or outcomes. The table maximum caps
+the progression. Each result retains its original rules and system.
+
+Runs execute in a Web Worker with progress and **Cancel simulation**. Leaving the
+simulator or changing inputs cancels the worker; changing inputs clears old
+results. One/two-deck runs do more computation and can take longer. A session
+plays up to the requested number of **completed rounds**, stopping on ruin.
+Voided exhausted-shoe rounds are refunded and retried; final-round ruin counts.
 
 ## Installing on a phone (Phase 6)
 
@@ -164,9 +197,10 @@ Pages) in Phase 6. Once hosted:
 - **Android Chrome:** menu → *Install app* / *Add to Home screen*.
 - **iOS Safari:** *Share* → *Add to Home Screen* (manual — there is no auto-prompt).
 
-This phase, installability + offline are verified on the desktop (Chrome DevTools /
-the production `preview` server): the service worker registers and precaches the
-full app shell.
+The production build precaches the app and simulation worker. **Ready for offline
+play** appears after caching is available. Updates are offered explicitly and can
+be installed only between hands, after saving progress. Settings includes
+**Check for updates**. Real Android/iPhone install and offline checks remain pending.
 
 ## Testing & correctness
 

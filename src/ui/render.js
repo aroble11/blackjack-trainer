@@ -19,6 +19,7 @@ import {
   canDeal,
   isBroke,
   activeHand,
+  decisionContext,
 } from '../engine/game.js';
 import { recommend, listStrategies } from '../teaching/strategies.js';
 import { explainAction } from '../teaching/explain.js';
@@ -208,7 +209,9 @@ function renderSettingsPanel(g, options) {
   const t = g.rules.teaching || {};
   const countingActive = t.showCardCounting && t.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle;
   const shoeDepletes = !g.rules.shoe.continuousShuffle;
-  return `<div class="settings-panel">
+  return `<div class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings">
+      <button class="btn settings-close" data-action="closeSettings" aria-label="Close settings">Done</button>
+      <p class="settings-example">Deck changes apply at the next betting round. Changing the starting amount begins a new bankroll after this hand.</p>
       <div class="settings-section">Table</div>
       <div class="settings-row">
         <span class="settings-label">Number of decks</span>
@@ -224,7 +227,7 @@ function renderSettingsPanel(g, options) {
       </div>
       <div class="settings-row">
         <span class="settings-label">Cut card</span>
-        <button class="settings-toggle${cutCard ? ' on' : ''}" data-action="toggleCutCard"
+        <button class="settings-toggle${cutCard ? ' on' : ''}" data-action="toggleCutCard" aria-label="Cut card"
                 role="switch" aria-checked="${cutCard}"${shoeDepletes ? '' : ' disabled'}>
           <span class="toggle-knob"></span>
         </button>
@@ -245,7 +248,7 @@ function renderSettingsPanel(g, options) {
       </div>
       <div class="settings-row">
         <span class="settings-label">Show starting amount</span>
-        <button class="settings-toggle${showStart ? ' on' : ''}" data-action="toggleShowStartAmount"
+        <button class="settings-toggle${showStart ? ' on' : ''}" data-action="toggleShowStartAmount" aria-label="Show starting amount"
                 role="switch" aria-checked="${showStart}">
           <span class="toggle-knob"></span>
         </button>
@@ -256,7 +259,7 @@ function renderSettingsPanel(g, options) {
           <span class="stepper-value">${formatMoney(maxBet * 100)}</span>
           <div class="stepper-arrows">
             <button class="stepper-btn" data-action="maxBetUp"
-                    aria-label="Increase max bet"${maxBet >= 10000 ? ' disabled' : ''}>▲</button>
+                    aria-label="Increase max bet"${maxBet >= startAmount ? ' disabled' : ''}>▲</button>
             <button class="stepper-btn" data-action="maxBetDown"
                     aria-label="Decrease max bet"${maxBet <= 100 ? ' disabled' : ''}>▼</button>
           </div>
@@ -265,14 +268,14 @@ function renderSettingsPanel(g, options) {
       <div class="settings-section">Display</div>
       <div class="settings-row">
         <span class="settings-label">Show card count</span>
-        <button class="settings-toggle${showCount ? ' on' : ''}" data-action="toggleCardCount"
+        <button class="settings-toggle${showCount ? ' on' : ''}" data-action="toggleCardCount" aria-label="Show card count"
                 role="switch" aria-checked="${showCount}"${countingActive ? '' : ' disabled'}>
           <span class="toggle-knob"></span>
         </button>
       </div>
       <div class="settings-row">
         <span class="settings-label">Alternate soft value</span>
-        <button class="settings-toggle${on ? ' on' : ''}" data-action="toggleSoftDisplay"
+        <button class="settings-toggle${on ? ' on' : ''}" data-action="toggleSoftDisplay" aria-label="Alternate soft value"
                 role="switch" aria-checked="${on}">
           <span class="toggle-knob"></span>
         </button>
@@ -289,6 +292,7 @@ function renderSettingsPanel(g, options) {
             .join('')}
         </select>
       </div>
+      ${options.pwa ? '<div class="settings-section">App</div><div class="settings-row"><button class="btn" data-action="checkUpdate">Check for updates</button></div>' : ''}
     </div>`;
 }
 
@@ -304,9 +308,7 @@ function renderHintPanel(g, options) {
   if (!teaching.showBasicStrategyHints || !options.ui?.hintShown) return '';
   const hand = activeHand(g);
   if (!hand || !g.dealerCards[0]) return '';
-  const rec = recommend(options.settings?.strategy ?? 'basic', hand.cards, g.dealerCards[0], g.rules, {
-    fromSplit: hand.fromSplit,
-  });
+  const rec = recommend(options.settings?.strategy ?? 'basic', hand.cards, g.dealerCards[0], g.rules, decisionContext(g));
   // A chart that doesn't cover this hand falls back to computed basic strategy,
   // and the panel says so — never pass off a fallback as the user's chart.
   const showComputed = !rec.isUserDefined || rec.fallback;
@@ -320,7 +322,9 @@ function renderHintPanel(g, options) {
     lines.push(`<p class="hint-why">${rec.note}</p>`);
   }
   const caveat = showComputed
-    ? 'Computed from your rules — cross-check an authoritative chart for the closest calls.'
+    ? rec.model === 'finite'
+      ? 'Finite-deck calculation for this hand; previous rounds are not counted. Split values approximate sibling-hand histories. Cross-check your rules.'
+      : 'Infinite-deck approximation; deck-specific composition effects are not modeled. Cross-check a chart for your rules.'
     : 'User-defined strategy — not verified as optimal.';
   return `<div class="hint-panel">
       <p class="hint-move">${rec.fallback ? 'Basic strategy' : rec.label}: <strong>${ACTION_LABEL[rec.action]}</strong></p>
@@ -648,7 +652,8 @@ function histogramSvg(r) {
   return `<svg class="sim-hist" viewBox="0 0 ${W} ${H}" role="img" aria-label="Session profit-and-loss distribution">${bars}${zero}${axis}</svg>`;
 }
 
-function renderSimResult(r, rules) {
+function renderSimResult(r) {
+  const rules = r.rules;
   const stat = (label, val, cls = '') =>
     `<div class="sim-stat"><span class="sim-stat-val ${cls}">${val}</span><span class="sim-stat-label">${label}</span></div>`;
   return `
@@ -660,7 +665,7 @@ function renderSimResult(r, rules) {
       ${stat('Worst', fmtMoneySigned(r.worstCents), 'neg')}
     </div>
     ${histogramSvg(r)}
-    <p class="sim-caption">${r.count.toLocaleString()} sessions of ${r.handsPerSession} hands from $${rules.table.startingBankroll}. ${pct(r.pctUp)} finished ahead, ${pct(r.pctDown)} behind. Bars left of the $0 line are losing sessions.</p>`;
+    <p class="sim-caption">${BETTING_SYSTEMS[r.system].label}: ${r.count.toLocaleString()} sessions, up to ${r.handsPerSession} completed hands each, from $${rules.table.startingBankroll}. ${pct(r.pctUp)} finished ahead, ${pct(r.pctDown)} behind. Bars left of the $0 line are losing sessions.</p>`;
 }
 
 function renderSimulator(g, options) {
@@ -669,9 +674,12 @@ function renderSimulator(g, options) {
     `<button class="btn sim-opt ${value == current ? 'on' : ''}" data-action="${action}" data-value="${value}">${label}</button>`;
   const systems = Object.entries(BETTING_SYSTEMS).map(([key, s]) => opt('simSystem', key, sim.system, s.label));
   const body = sim.running
-    ? `<div class="sim-status">Running ${Number(sim.sessions).toLocaleString()} sessions…</div>`
+    ? `<div class="sim-status" role="status">Completed ${sim.progress ?? 0} of ${sim.sessions} sessions…</div>
+      <progress max="${sim.sessions}" value="${sim.progress ?? 0}" aria-label="Simulation progress"></progress>
+      ${btn('cancelSim', 'Cancel simulation')}`
+    : sim.error ? '<div class="sim-status" role="alert">Simulation could not finish. Please try again.</div>'
     : sim.result
-      ? renderSimResult(sim.result, g.rules)
+      ? renderSimResult(sim.result)
       : '<div class="sim-status muted">Pick a system and run a simulation to see the outcome distribution.</div>';
 
   return `<div class="game sim-view">
@@ -692,7 +700,7 @@ function renderSimulator(g, options) {
     </div>`;
 }
 
-export function render(root, g, options = {}) {
+function renderContent(root, g, options = {}) {
   if (options.ui?.view === 'sim') {
     root.innerHTML = renderSimulator(g, options);
     return;
@@ -725,6 +733,9 @@ export function render(root, g, options = {}) {
       ${settingsShown ? '<div class="settings-backdrop" data-action="closeSettings"></div>' : ''}
       ${settingsShown ? renderSettingsPanel(g, options) : ''}
       ${renderCount(g, options)}
+      ${g.roundVoided ? '<p class="game-notice" role="status">Shoe ran out. This hand was voided, all stakes refunded, and a fresh shoe shuffled.</p>' : ''}
+      ${options.settings && (g.rules.shoe.numberOfDecks !== options.settings.numberOfDecks || g.rules.table.startingBankroll !== options.settings.startingAmount) ? '<p class="game-notice" role="status">Settings will apply at the next betting round.</p>' : ''}
+      ${renderPwa(g, options.pwa)}
       ${
         options.ui?.deviation
           ? `<div class="deviation-note" role="status">${selectedStrategyLabel(options)} here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`
@@ -751,4 +762,29 @@ export function render(root, g, options = {}) {
           : ''
       }
     </div>`;
+}
+
+function renderPwa(g, pwa) {
+  if (!pwa) return '';
+  if (pwa.updating) return '<div class="pwa-status" role="status">Updating app… Please wait.</div>';
+  const stable = g.phase === Phase.Betting || g.phase === Phase.RoundOver;
+  return '<div class="pwa-status" role="status">' +
+    (pwa.error ? 'Offline setup or update unavailable. Try again while online.' : pwa.ready ? 'Ready for offline play' : '') +
+    (pwa.updateAvailable ? btn('installUpdate', stable ? 'Update app' : 'Update after this hand', { disabled: !stable }) : '') + '</div>';
+}
+
+/** Whole-tree renders retain keyboard focus and scroll position where possible. */
+export function render(root, g, options = {}) {
+  const active = root.ownerDocument?.activeElement;
+  const action = root.contains?.(active) ? active?.dataset?.action : null;
+  const value = active?.dataset?.value;
+  const scroll = root.querySelector?.('.settings-panel')?.scrollTop ?? 0;
+  renderContent(root, g, options);
+  const panel = root.querySelector?.('.settings-panel');
+  if (panel) panel.scrollTop = scroll;
+  if (action) {
+    const matches = [...(root.querySelectorAll?.('[data-action]') ?? [])];
+    const next = matches.find((el) => el.dataset.action === action && el.dataset.value === value && !el.disabled);
+    (next ?? root.querySelector?.('.controls button:not(:disabled), .sim-run:not(:disabled)'))?.focus({ preventScroll: true });
+  }
 }

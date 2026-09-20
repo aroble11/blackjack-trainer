@@ -13,7 +13,7 @@
  * committed (bet/double/split) and credited back at settlement.
  */
 
-import { createShoe, draw, needsReshuffle, reshuffle } from './shoe.js';
+import { createShoe, draw, needsReshuffle, reshuffle, ShoeExhaustedError } from './shoe.js';
 import { handValue, isBlackjack, isBust, isPair } from './hand.js';
 import { cardValue, isAce } from './cards.js';
 import { playDealerHand } from './dealer.js';
@@ -46,6 +46,8 @@ export function createGame(rules, opts = {}) {
     insuranceReturnCents: 0, // credited back for insurance (stake + winnings), 0 if lost/none
     playerHands: [],
     activeHandIndex: 0,
+    roundStartBankroll: null,
+    roundVoided: false,
   };
 }
 
@@ -100,7 +102,9 @@ export function clearBet(g) {
 export function canDeal(g) {
   return (
     g.phase === Phase.Betting &&
+    Number.isSafeInteger(g.betCents) &&
     g.betCents >= minBetCents(g) &&
+    g.betCents <= maxBetCents(g) &&
     g.betCents <= g.bankrollCents
   );
 }
@@ -129,7 +133,7 @@ export function abandonRound(g) {
 }
 
 // ── dealing ─────────────────────────────────────────────────────────────────
-export function deal(g) {
+function dealRound(g) {
   if (!canDeal(g)) throw new Error('Cannot deal: invalid bet or wrong phase.');
   if (deckCountChanged(g)) {
     rebuildShoe(g); // surfaces the same shuffle cue to the UI as a natural reshuffle
@@ -138,6 +142,8 @@ export function deal(g) {
     if (g.justReshuffled) reshuffle(g.shoe);
   }
 
+  g.roundStartBankroll = g.bankrollCents;
+  g.roundVoided = false;
   g.bankrollCents -= g.betCents; // commit the stake
 
   // Deal order: player, dealer up, player, dealer hole.
@@ -221,7 +227,7 @@ function resolvePeekAndNaturals(g) {
 }
 
 // ── player actions ──────────────────────────────────────────────────────────
-export function hit(g) {
+function hitRound(g) {
   if (!canHit(g)) return g;
   const hand = activeHand(g);
   const card = draw(g.shoe);
@@ -232,13 +238,13 @@ export function hit(g) {
   return g;
 }
 
-export function stand(g) {
+function standRound(g) {
   if (!canStand(g)) return g;
   advanceHand(g);
   return g;
 }
 
-export function double(g) {
+function doubleRound(g) {
   if (!canDouble(g)) throw new Error('Double not allowed in this state.');
   const hand = activeHand(g);
   g.bankrollCents -= hand.stakeCents; // commit a matching stake
@@ -318,6 +324,7 @@ function settleRound(g) {
 
 // ── next round / bankroll ────────────────────────────────────────────────────
 export function nextRound(g) {
+  g.roundVoided = false;
   g.phase = Phase.Betting;
   g.dealerCards = [];
   g.dealerHoleRevealed = false;
@@ -408,7 +415,7 @@ export function canSurrender(g) {
  * 21 made on any split hand is not a natural — settlement handles that via each
  * hand's fromSplit flag.
  */
-export function split(g) {
+function splitRound(g) {
   if (!canSplit(g)) throw new Error('Split not allowed in this state.');
   const i = g.activeHandIndex;
   const hand = g.playerHands[i];
@@ -435,6 +442,42 @@ export function split(g) {
     advanceHand(g); // the split card made 21 on the left hand
   }
   return g;
+}
+
+/** Shared by live play and simulation. A short shoe voids the WHOLE round,
+ * including split, double and insurance stakes, then builds a fresh full shoe.
+ * Other programming errors must still propagate. The reserve reduces how often
+ * this happens; it is not a mathematical guarantee for arbitrary split rounds. */
+function recoverExhaustion(g, action) {
+  try { return action(g); }
+  catch (error) {
+    if (!(error instanceof ShoeExhaustedError)) throw error;
+    g.bankrollCents = g.roundStartBankroll;
+    nextRound(g);
+    rebuildShoe(g);
+    g.roundVoided = true;
+    return g;
+  }
+}
+
+export const deal = (g) => recoverExhaustion(g, dealRound);
+export const hit = (g) => recoverExhaustion(g, hitRound);
+export const stand = (g) => recoverExhaustion(g, standRound);
+export const double = (g) => recoverExhaustion(g, doubleRound);
+export const split = (g) => recoverExhaustion(g, splitRound);
+
+/** The engine supplies action legality to every teaching consumer. */
+export function decisionContext(g) {
+  const hand = activeHand(g);
+  return {
+    fromSplit: !!hand?.fromSplit,
+    splitBudget: Math.max(0, Math.min(
+      g.rules.player.maxSplitHands - g.playerHands.length,
+      hand?.stakeCents > 0 ? Math.floor(g.bankrollCents / hand.stakeCents) : 0
+    )),
+    legal: { hit: canHit(g), stand: canStand(g), double: canDouble(g),
+      split: canSplit(g), surrender: canSurrender(g) },
+  };
 }
 
 /**

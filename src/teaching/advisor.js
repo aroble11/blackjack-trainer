@@ -12,16 +12,23 @@ import { handValue, isPair } from '../engine/hand.js';
 import { cardValue } from '../engine/cards.js';
 import { dealerOutcomeDistribution } from './dealer-odds.js';
 import { standEV, hitOptimalEV, doubleEV, splitEV, doubleAllowedForTotal } from './ev.js';
+import { finiteDeckEVs } from './finite-deck.js';
 
 /**
  * @param {Array} playerCards - the active hand's cards.
  * @param {object} dealerUpcard - the dealer's upcard.
  * @param {object} rules - the RULES config.
- * @param {{fromSplit?:boolean}} [context]
+ * @param {{fromSplit?:boolean, splitBudget?:number, legal?:object}} [context]
  * @returns {{action:string, evs:object, dealerDist:object, total:number, soft:boolean}}
  *   action ∈ 'stand' | 'hit' | 'double' | 'split' | 'surrender'.
  */
 export function bestAction(playerCards, dealerUpcard, rules, context = {}) {
+  if (rules.shoe.numberOfDecks <= 2) {
+    const result = finiteDeckEVs(playerCards, dealerUpcard, rules, context);
+    for (const a in result.evs) if (context.legal?.[a] === false) delete result.evs[a];
+    result.action = Object.keys(result.evs).reduce((best, a) => result.evs[a] > result.evs[best] ? a : best, 'stand');
+    return result;
+  }
   const fromSplit = !!context.fromSplit;
   const dealerDist = dealerOutcomeDistribution(cardValue(dealerUpcard), rules);
   const memo = new Map();
@@ -37,14 +44,17 @@ export function bestAction(playerCards, dealerUpcard, rules, context = {}) {
   if (twoCards && p.doubleAllowed && doubleAllowedForTotal(total, soft, rules) && (!fromSplit || p.doubleAfterSplit)) {
     evs.double = doubleEV(total, soft, dealerDist);
   }
-  if (twoCards && !fromSplit && p.splitAllowed && isPair(playerCards)) {
-    evs.split = splitEV(cardValue(playerCards[0]), dealerDist, rules, memo);
+  const splitBudget = context.splitBudget ?? p.maxSplitHands - (fromSplit ? 2 : 1);
+  if (twoCards && splitBudget > 0 && p.splitAllowed && isPair(playerCards) &&
+      !(fromSplit && playerCards[0].rank === 'A' && !p.resplitAces)) {
+    evs.split = splitEV(cardValue(playerCards[0]), dealerDist, rules, memo, splitBudget);
   }
   if (twoCards && !fromSplit && (p.surrender === 'late' || p.surrender === 'early')) {
     evs.surrender = -0.5;
   }
 
   let action = 'stand';
-  for (const a in evs) if (evs[a] > evs[action]) action = a;
-  return { action, evs, dealerDist, total, soft };
+  for (const a in evs) if (context.legal?.[a] === false) delete evs[a];
+  for (const a in evs) if (evs[a] > (evs[action] ?? -Infinity)) action = a;
+  return { action, evs, dealerDist, total, soft, model: 'infinite' };
 }

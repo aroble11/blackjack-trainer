@@ -78,7 +78,7 @@ describe('chart interpreter — cell codes', () => {
     expect(act(['8S', '8H'], '10D', withRules({ player: { splitAllowed: false, surrender: 'late' } }))).toBe(
       'surrender'
     );
-    // After a split, pairs can't re-split here (advisor convention): 8,8 vs 9 -> hard 16 'R' -> hit (no surrender after split).
+    // Splitting disabled and surrender disabled: fall through to hit.
     expect(act(['8S', '8H'], '9D', noSplit)).toBe('hit');
   });
 

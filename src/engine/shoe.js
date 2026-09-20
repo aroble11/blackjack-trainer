@@ -76,22 +76,12 @@ export function createShoe(rules, { rng = Math.random, cards } = {}) {
 // random cut card may land.
 const LAST_THIRD = 2 / 3;
 
-// A single-deck shoe reshuffles once this few cards remain, so a hand can never
-// run the deck dry mid-round (the live game only reshuffles between rounds).
-// Multi-deck shoes have a much larger natural buffer and don't need this floor.
-const SINGLE_DECK_MIN_REMAINING = 20;
+// Reserve for ordinary rounds at every deck count. Exceptional long split
+// rounds still have the engine's atomic void/refund recovery as a safety net.
+const MIN_REMAINING = 20;
 
-/**
- * Choose where the cut card sits (the draw index that triggers a between-rounds
- * reshuffle). With randomCutCard OFF this is the fixed `penetration` depth — the
- * historical behavior. With it ON, the cut lands at a uniformly random position
- * in the last third of the shoe, but never deeper than `penetration` (the safe
- * cap), so a buffer of cards always remains and the shoe can't exhaust mid-hand.
- *
- * For a single deck the cut is additionally pulled no deeper than
- * `length - SINGLE_DECK_MIN_REMAINING`, guaranteeing ≥20 cards remain when a
- * round is dealt (a 1-deck round can otherwise draw past the end).
- */
+/** Pick a fixed/random cut, then pull it forward to preserve the reserve.
+ * Short injected test shoes retain their requested penetration. */
 function pickCutIndex(length, penetration, randomCutCard, rng, numberOfDecks) {
   const deep = Math.floor(length * penetration);
   let cut = deep;
@@ -99,8 +89,8 @@ function pickCutIndex(length, penetration, randomCutCard, rng, numberOfDecks) {
     const lo = Math.floor(length * LAST_THIRD);
     cut = deep <= lo ? deep : lo + Math.floor(rng() * (deep - lo + 1)); // random in [lo, deep]
   }
-  if (numberOfDecks === 1 && length > SINGLE_DECK_MIN_REMAINING) {
-    cut = Math.min(cut, length - SINGLE_DECK_MIN_REMAINING);
+  if (length > MIN_REMAINING) {
+    cut = Math.min(cut, length - MIN_REMAINING);
   }
   return cut;
 }
@@ -117,9 +107,13 @@ export function setRandomCutCard(shoe, on) {
 }
 
 /** Draw the next card, advancing the pointer. Throws if the shoe is exhausted. */
+export class ShoeExhaustedError extends Error {
+  constructor() { super('Shoe exhausted: drew past the end of the shoe.'); }
+}
+
 export function draw(shoe) {
   if (shoe.pos >= shoe.cards.length) {
-    throw new Error('Shoe exhausted: drew past the end of the shoe.');
+    throw new ShoeExhaustedError();
   }
   return shoe.cards[shoe.pos++];
 }

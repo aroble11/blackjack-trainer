@@ -17,6 +17,8 @@ import { sound, unlockAudio, setMuted } from '../assets/sound.js';
 import {
   Phase,
   activeHand,
+  decisionContext,
+  setBet,
   addToBet,
   clearBet,
   canDeal,
@@ -35,12 +37,9 @@ import {
   rebuy,
   resetBankroll,
   deckCountChanged,
-  abandonRound,
-  rebuildShoe,
 } from '../engine/game.js';
-// (resetBankroll is reused by the starting-amount restart below.)
 import { recommend } from '../teaching/strategies.js';
-import { runSimulation } from '../sim/simulator.js';
+import { applyPendingSettings } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -52,51 +51,51 @@ export function mount(root, game, options = {}) {
     deviation: null,
     view: 'table',
     settingsShown: false,
-    decksOnOpen: null, // deck count snapshotted when settings was last opened
-    startOnOpen: null, // starting amount snapshotted when settings was last opened
     reshuffling: false,
     reshuffleMessage: 'RESHUFFLE', // overlay text for the on-close restart pause
     sim: { system: 'martingale', sessions: 2000, hands: 100, result: null, running: false },
   });
 
-  // Restart the moment settings closes IF the deck count OR the starting amount
-  // differs from what it was when settings opened (ui.decksOnOpen /
-  // ui.startOnOpen) — not from current live values, which can drift after a
-  // mid-hand change. Bumping a value away and back nets no change, so nothing
-  // fires. Either change rebuilds the shoe, and a shoe rebuild can't keep cards
-  // in play, so any hand in progress is abandoned (its committed stake is
-  // forfeited as a loss) first. A starting-amount change additionally resets the
-  // bankroll to the new starting amount — a full "NEW GAME" — even between
-  // rounds. Returns true if it fired (the caller should skip its own render —
-  // this one renders itself).
-  function reshuffleNowIfChanged() {
-    if (!settings) return false;
-    const decksChanged = settings.numberOfDecks !== ui.decksOnOpen;
-    const startChanged = settings.startingAmount !== ui.startOnOpen;
-    if ((!decksChanged && !startChanged) || game.shoe.continuousShuffle) return false;
-    ui.reshuffleMessage = startChanged ? 'NEW GAME' : 'RESHUFFLE';
-    ui.reshuffling = true;
-    render(root, game, options);
-    sound.shuffle();
-    setTimeout(() => {
-      ui.reshuffling = false;
-      if (game.phase !== Phase.Betting) abandonRound(game); // drop any hand in progress
-      if (startChanged) resetBankroll(game); // Betting phase guaranteed by now
-      rebuildShoe(game);
-      if (persist) persist();
-      render(root, game, options);
-      game.justReshuffled = false;
-    }, 2000);
-    return true;
+  let worker = null;
+  function stopSimulation() {
+    worker?.terminate();
+    worker = null;
+    ui.sim.running = false;
   }
+  function closeSettings() {
+    ui.settingsShown = false;
+    applyPendingSettings(game, settings);
+    persist?.();
+    render(root, game, options);
+    root.querySelector('[data-action="openSettings"]')?.focus();
+  }
+  root.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && ui.settingsShown) { event.preventDefault(); closeSettings(); }
+    if (event.key === 'Tab' && ui.settingsShown) {
+      const buttons = [...root.querySelectorAll('.settings-panel button:not(:disabled), .settings-panel select:not(:disabled)')];
+      const first = buttons[0], last = buttons.at(-1);
+      if (event.shiftKey && event.target === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && event.target === last) { event.preventDefault(); first?.focus(); }
+    }
+  });
 
   root.addEventListener('click', (event) => {
-    if (ui.reshuffling) return; // game is paused on the reshuffle announcement
+    if (ui.reshuffling || options.pwa?.updating) return;
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
     const action = el.dataset.action;
     unlockAudio(); // a real user gesture — unlock/resume audio
 
+    if (action === 'installUpdate') {
+      if (game.phase !== Phase.Betting && game.phase !== Phase.RoundOver) return;
+      options.pwa.updating = true;
+      render(root, game, options);
+      Promise.resolve(persist?.()).then(() => {
+        if (game.phase === Phase.Betting || game.phase === Phase.RoundOver) return options.pwa?.update?.();
+      }).catch(() => { options.pwa.updating = false; options.pwa.error = true; render(root, game, options); });
+      return;
+    }
+    if (action === 'checkUpdate') { options.pwa?.check?.(); return; }
     // Reveal the hint without disturbing game state.
     if (action === 'hint') {
       ui.hintShown = !ui.hintShown;
@@ -115,24 +114,15 @@ export function mount(root, game, options = {}) {
     }
 
     if (action === 'openSettings') {
-      const wasShown = ui.settingsShown;
-      ui.settingsShown = !ui.settingsShown;
-      if (!wasShown) {
-        // snapshot the values whose change triggers a full restart on close
-        ui.decksOnOpen = settings ? settings.numberOfDecks : null;
-        ui.startOnOpen = settings ? settings.startingAmount : null;
-      } else if (reshuffleNowIfChanged()) {
-        return; // closing via the gear toggle
+      if (ui.settingsShown) closeSettings();
+      else {
+        ui.settingsShown = true;
+        render(root, game, options);
+        root.querySelector('.settings-panel button')?.focus();
       }
-      render(root, game, options);
       return;
     }
-    if (action === 'closeSettings') {
-      ui.settingsShown = false;
-      if (reshuffleNowIfChanged()) return;
-      render(root, game, options);
-      return;
-    }
+    if (action === 'closeSettings') { closeSettings(); return; }
     if (action === 'toggleSoftDisplay') {
       if (settings) settings.softDisplayBothValues = !settings.softDisplayBothValues;
       if (persist) persist();
@@ -169,38 +159,34 @@ export function mount(root, game, options = {}) {
       if (settings) {
         const next = clamp(settings.numberOfDecks + (action === 'decksUp' ? 1 : -1), 1, 99);
         settings.numberOfDecks = next;
-        game.rules.shoe.numberOfDecks = next; // live reference — rulesChip() picks it up immediately
+        // Applied after the current round, when betting resumes.
       }
       if (persist) persist();
       render(root, game, options);
       return;
     }
-    // Unlike deck count, the max bet doesn't shape the shoe, so it can just take
-    // effect immediately — no reshuffle-on-close dance needed. It only ever
-    // widens/narrows what setBet() clamps future bets to (game.js:85); it never
-    // touches a bet already placed.
+    // Clamp only pending bets; committed stakes are preserved.
     if (action === 'maxBetUp' || action === 'maxBetDown') {
       if (settings) {
-        const next = clamp(settings.maxBet + (action === 'maxBetUp' ? 50 : -50), 100, 10000);
+        const next = clamp(settings.maxBet + (action === 'maxBetUp' ? 50 : -50), 100, settings.startingAmount);
         settings.maxBet = next;
-        game.rules.table.maxBet = next; // live reference
+        game.rules.table.maxBet = next;
+        setBet(game, game.betCents);
       }
       if (persist) persist();
       render(root, game, options);
       return;
     }
-    // The starting amount is stepped live in the panel (in $50 increments), but
-    // the actual "NEW GAME" restart (bankroll reset + shoe rebuild) is deferred
-    // to when settings closes — see reshuffleNowIfChanged(). Lowering it below
-    // the current max bet clamps max bet down to match, immediately.
+    // Defer bankroll restarts until betting resumes after settlement.
     if (action === 'startAmountUp' || action === 'startAmountDown') {
       if (settings) {
         const next = clamp(settings.startingAmount + (action === 'startAmountUp' ? 50 : -50), 100, 10000);
         settings.startingAmount = next;
-        game.rules.table.startingBankroll = next; // live reference (used by resets/rebuys)
+        // Starting bankroll resets only after the current round is settled.
         if (settings.maxBet > next) {
           settings.maxBet = next;
-          game.rules.table.maxBet = next; // auto-clamp: max bet can't exceed the start
+          game.rules.table.maxBet = next;
+          setBet(game, game.betCents);
         }
       }
       if (persist) persist();
@@ -210,27 +196,48 @@ export function mount(root, game, options = {}) {
 
     // ── betting simulator (UI-only state; never touches the live game) ────────
     if (action === 'openSim') { ui.view = 'sim'; render(root, game, options); return; }
-    if (action === 'closeSim') { ui.view = 'table'; render(root, game, options); return; }
-    if (action === 'simSystem') { ui.sim.system = el.dataset.value; render(root, game, options); return; }
-    if (action === 'simSessions') { ui.sim.sessions = Number(el.dataset.value); render(root, game, options); return; }
-    if (action === 'simHands') { ui.sim.hands = Number(el.dataset.value); render(root, game, options); return; }
+    if (action === 'closeSim') { stopSimulation(); ui.view = 'table'; render(root, game, options); return; }
+    if (['simSystem', 'simSessions', 'simHands'].includes(action)) {
+      stopSimulation();
+      ui.sim[{ simSystem: 'system', simSessions: 'sessions', simHands: 'hands' }[action]] =
+        action === 'simSystem' ? el.dataset.value : Number(el.dataset.value);
+      ui.sim.result = null;
+      ui.sim.error = null;
+      render(root, game, options);
+      return;
+    }
+    if (action === 'cancelSim') { stopSimulation(); render(root, game, options); return; }
     if (action === 'runSim') {
       if (ui.sim.running) return;
       ui.sim.running = true;
-      render(root, game, options); // paint the "Running…" state first
-      // Defer the blocking run so the spinner paints before the main thread locks.
-      setTimeout(() => {
-        try {
-          ui.sim.result = runSimulation(game.rules, {
-            system: ui.sim.system,
-            sessions: ui.sim.sessions,
-            handsPerSession: ui.sim.hands,
-          });
-        } finally {
-          ui.sim.running = false;
+      ui.sim.progress = 0;
+      ui.sim.result = null;
+      ui.sim.error = null;
+      render(root, game, options);
+      try {
+        const current = worker = new Worker(new URL('../sim/worker.js', import.meta.url), { type: 'module' });
+        const fail = () => {
+          if (worker !== current) return;
+          stopSimulation();
+          ui.sim.error = 'Simulation could not finish. Please try again.';
           render(root, game, options);
-        }
-      }, 24);
+        };
+        current.onerror = fail;
+        current.onmessage = ({ data }) => {
+          if (worker !== current) return;
+          if (data.type === 'progress') ui.sim.progress = data.completed;
+          else if (data.type === 'result') { ui.sim.result = data.result; stopSimulation(); }
+          else { fail(); return; }
+          render(root, game, options);
+        };
+        current.postMessage({ rules: structuredClone(game.rules), options: {
+          system: ui.sim.system, sessions: ui.sim.sessions, handsPerSession: ui.sim.hands,
+        } });
+      } catch {
+        stopSimulation();
+        ui.sim.error = 'This browser could not start the simulation worker.';
+        render(root, game, options);
+      }
       return;
     }
 
@@ -254,6 +261,7 @@ export function mount(root, game, options = {}) {
       setTimeout(() => {
         ui.reshuffling = false;
         deal(game);
+        if (game.phase === Phase.Betting) applyPendingSettings(game, settings);
         sound.deal();
         if (persist) persist();
         render(root, game, options);
@@ -266,6 +274,7 @@ export function mount(root, game, options = {}) {
     const recommended = recommendedMove(game, action, settings);
 
     apply(game, action, el.dataset.value);
+    if (game.phase === Phase.Betting) applyPendingSettings(game, settings);
     playSound(game, action);
 
     if (recommended && recommended !== action) ui.deviation = recommended;
@@ -278,6 +287,7 @@ export function mount(root, game, options = {}) {
   // The strategy dropdown is the one control that fires `change`, not click —
   // a single delegated listener, mirroring the click one above.
   root.addEventListener('change', (event) => {
+    if (options.pwa?.updating) return;
     const el = event.target.closest('[data-action="selectStrategy"]');
     if (!el) return;
     if (settings) settings.strategy = el.value;
@@ -286,6 +296,7 @@ export function mount(root, game, options = {}) {
   });
 
   render(root, game, options);
+  return { refresh: () => render(root, game, options) };
 }
 
 const DECISIONS = ['hit', 'stand', 'double', 'split', 'surrender'];
@@ -298,16 +309,7 @@ function recommendedMove(game, action, settings) {
   const hand = activeHand(game);
   if (!hand || !game.dealerCards[0]) return null;
   // Deviation warnings follow whichever strategy the user selected in Settings.
-  const best = recommend(settings?.strategy ?? 'basic', hand.cards, game.dealerCards[0], game.rules, {
-    fromSplit: hand.fromSplit,
-  }).action;
-  // The advisor recommends by EV alone (it ignores bankroll/limits). Don't flag a
-  // "deviation" toward a move the player can't actually make here — e.g. it says
-  // double/split but the bankroll or re-split cap forbids it. hit/stand are always
-  // available during the player's turn, so only the optional moves need this check.
-  if (best === 'double' && !canDouble(game)) return null;
-  if (best === 'split' && !canSplit(game)) return null;
-  if (best === 'surrender' && !canSurrender(game)) return null;
+  const best = recommend(settings?.strategy ?? 'basic', hand.cards, game.dealerCards[0], game.rules, decisionContext(game)).action;
   return best;
 }
 

@@ -31,8 +31,9 @@ import {
   canSurrender,
   activeHand,
   Phase,
+  decisionContext,
 } from '../engine/game.js';
-import { cardsRemaining, reshuffle } from '../engine/shoe.js';
+
 import { bestAction } from '../teaching/advisor.js';
 import { handValue, isPair } from '../engine/hand.js';
 import { cardValue } from '../engine/cards.js';
@@ -47,14 +48,16 @@ import { mulberry32 } from './rng.js';
  */
 function makeDecider(rules) {
   const cache = new Map();
-  return (cards, upcard, fromSplit) => {
+  return (cards, upcard, context) => {
+    const { fromSplit, splitBudget, legal } = context;
     const { total, soft } = handValue(cards);
     const twoCards = cards.length === 2;
     const pairVal = twoCards && isPair(cards) ? cardValue(cards[0]) : 0;
-    const key = `${total}|${soft ? 1 : 0}|${twoCards ? 1 : 0}|${pairVal}|${fromSplit ? 1 : 0}|${cardValue(upcard)}`;
+    const composition = rules.shoe.numberOfDecks <= 2 ? cards.map(cardValue).sort().join(',') : '';
+    const key = `${composition}|${splitBudget}|${JSON.stringify(legal)}|${total}|${soft ? 1 : 0}|${twoCards ? 1 : 0}|${pairVal}|${fromSplit ? 1 : 0}|${cardValue(upcard)}`;
     let evs = cache.get(key);
     if (!evs) {
-      evs = bestAction(cards, upcard, rules, { fromSplit }).evs;
+      evs = bestAction(cards, upcard, rules, context).evs;
       cache.set(key, evs);
     }
     return evs;
@@ -104,7 +107,7 @@ function playRound(game, decide) {
   let guard = 0;
   while (game.phase === Phase.PlayerTurn) {
     const hand = activeHand(game);
-    const evs = decide(hand.cards, game.dealerCards[0], hand.fromSplit);
+    const evs = decide(hand.cards, game.dealerCards[0], decisionContext(game));
     applyAction(game, bestLegalAction(game, evs));
     if (++guard > 200) throw new Error('Simulator: runaway hand loop'); // safety net
   }
@@ -121,27 +124,19 @@ export function runSession(rules, systemName, { handsPerSession = 100, rng = Mat
   const startCents = game.bankrollCents;
   let handsPlayed = 0;
   let ruined = false;
+  let voidedRounds = 0;
 
-  for (let h = 0; h < handsPerSession; h++) {
+  while (handsPlayed < handsPerSession) {
     setBet(game, system.bet()); // engine clamps to min(desired, table max, bankroll)
     if (!canDeal(game)) {
       ruined = true; // can't cover the table minimum
       break;
     }
     const before = game.bankrollCents;
-    try {
-      playRound(game, decide);
-    } catch (err) {
-      // The engine reshuffles only BETWEEN rounds, so on a small deck (1–2) a
-      // rare card-heavy split round can draw past the end of the shoe. Treat that
-      // as the shoe boundary: void the partial hand (restore the stake), reshuffle,
-      // and play on. Impossible with the default multi-deck shoe — its post-cut
-      // buffer dwarfs any single round — so normal runs never take this path.
-      if (cardsRemaining(game.shoe) > 0) throw err; // not exhaustion -> a real error
-      game.bankrollCents = before;
-      reshuffle(game.shoe);
-      nextRound(game);
-      continue;
+    playRound(game, decide);
+    if (game.roundVoided) {
+      if (++voidedRounds > 100) throw new Error('Too many voided rounds; check the shoe rules.');
+      continue; // refund/rebuild is in the engine; only completed hands count
     }
     system.settle(game.bankrollCents - before);
     nextRound(game);
@@ -152,7 +147,8 @@ export function runSession(rules, systemName, { handsPerSession = 100, rng = Mat
     netCents: game.bankrollCents - startCents,
     finalCents: game.bankrollCents,
     handsPlayed,
-    ruined,
+    ruined: ruined || game.bankrollCents < Math.round(rules.table.minBet * 100),
+    voidedRounds,
   };
 }
 
@@ -161,13 +157,27 @@ export function runSession(rules, systemName, { handsPerSession = 100, rng = Mat
  * @returns summary stats + the raw per-session results, for charting.
  */
 export function runSimulation(rules, { system = 'martingale', sessions = 2000, handsPerSession = 100, seed } = {}) {
-  const decider = makeDecider(rules); // shared across sessions — warms up once
+  const batches = runSimulationBatches(rules, { system, sessions, handsPerSession, seed });
+  let step;
+  do { step = batches.next(); } while (!step.done);
+  return step.value;
+}
+
+/** One generator serves workers and deterministic tests; progress is actual sessions. */
+export function* runSimulationBatches(inputRules, { system = 'martingale', sessions = 2000, handsPerSession = 100, seed } = {}) {
+  if (!Number.isInteger(sessions) || sessions < 1 || sessions > 5000 ||
+      !Number.isInteger(handsPerSession) || handsPerSession < 1 || handsPerSession > 1000) {
+    throw new Error('Invalid simulation size.');
+  }
+  const rules = structuredClone(inputRules);
+  const decider = makeDecider(rules);
   const rng = seed != null ? mulberry32(seed) : Math.random;
   const results = [];
   for (let s = 0; s < sessions; s++) {
     results.push(runSession(rules, system, { handsPerSession, rng, decider }));
+    if ((s + 1) % 10 === 0 || s + 1 === sessions) yield s + 1;
   }
-  return summarize(results, { system, sessions, handsPerSession });
+  return summarize(results, { system, sessions, handsPerSession, rules });
 }
 
 function summarize(results, meta) {

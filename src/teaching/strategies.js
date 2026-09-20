@@ -121,12 +121,13 @@ export function chartAction(strategy, cards, upcard, rules, context = {}) {
   const col = columnKey(upcard);
 
   // Same legality gating as the advisor (advisor.js) — never recommend a move
-  // the rules forbid. Table-state limits (bankroll, re-split cap) stay the
-  // caller's concern, exactly as with bestAction().
+  // the rules forbid. Engine context supplies bankroll and remaining-hand limits.
   const mayDouble =
-    twoCards && p.doubleAllowed && doubleAllowedForTotal(total, soft, rules) && (!fromSplit || p.doubleAfterSplit);
-  const maySplit = twoCards && !fromSplit && p.splitAllowed && isPair(cards);
-  const maySurrender = twoCards && !fromSplit && (p.surrender === 'late' || p.surrender === 'early');
+    context.legal?.double !== false && twoCards && p.doubleAllowed && doubleAllowedForTotal(total, soft, rules) && (!fromSplit || p.doubleAfterSplit);
+  const maySplit = context.legal?.split !== false &&
+    (context.splitBudget ?? p.maxSplitHands - (fromSplit ? 2 : 1)) > 0 &&
+    twoCards && p.splitAllowed && isPair(cards) && !(fromSplit && isAce(cards[0]) && !p.resplitAces);
+  const maySurrender = context.legal?.surrender !== false && twoCards && !fromSplit && (p.surrender === 'late' || p.surrender === 'early');
 
   // Pairs first; a 'P' the player can't take falls through to the totals rows.
   let code = null;

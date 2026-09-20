@@ -68,14 +68,14 @@ export function doubleEV(total, soft, dealerDist) {
  * EV of splitting a pair of base value `pairValue` — the total over both new
  * hands, in units of the original bet (so it compares directly against the
  * single-hand stand/hit/double EVs). Each new hand draws one card and is played
- * optimally; with DAS it may double. Split aces take one card and stand. This
- * simplified model ignores re-splits (a tiny EV gain that doesn't change the
- * split/no-split decision in practice).
+ * optimally; with DAS it may double. Split aces take one card and stand. Re-splits share a finite remaining-hand allowance across descendants.
  */
-export function splitEV(pairValue, dealerDist, rules, memo) {
+export function splitEV(pairValue, dealerDist, rules, memo, splitBudget = rules.player.maxSplitHands - 1) {
   const isAces = pairValue === 11;
   const das = rules.player.doubleAfterSplit;
-  let perHand = 0;
+  let nonPairEV = 0;
+  let pairEV = 0;
+  let pairProbability = 0;
   for (const { v, p } of DRAW) {
     const hand = handFromValues([pairValue, v]);
     let ev;
@@ -87,7 +87,24 @@ export function splitEV(pairValue, dealerDist, rules, memo) {
         ev = Math.max(ev, doubleEV(hand.total, hand.soft, dealerDist));
       }
     }
-    perHand += p * ev;
+    if (v === pairValue) { pairEV = ev; pairProbability = p; }
+    else nonPairEV += p * ev;
   }
-  return 2 * perHand;
+  // Remaining split capacity is SHARED by both descendants, not independently
+  // available to each. Pending hands each hold one original pair card.
+  const cache = new Map();
+  function pendingValue(pending, remaining) {
+    if (!pending) return 0;
+    const key = `${pending}:${remaining}`;
+    if (cache.has(key)) return cache.get(key);
+    const rest = pendingValue(pending - 1, remaining);
+    const keepPair = pairEV + rest;
+    const resplit = remaining > 0 && !isAces
+      ? pendingValue(pending + 1, remaining - 1) : -Infinity;
+    const value = nonPairEV + (1 - pairProbability) * rest +
+      pairProbability * Math.max(keepPair, resplit);
+    cache.set(key, value);
+    return value;
+  }
+  return pendingValue(2, Math.max(0, splitBudget - 1));
 }

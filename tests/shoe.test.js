@@ -151,7 +151,7 @@ describe('random cut card', () => {
 
 describe('single-deck reshuffle floor', () => {
   // A 1-deck shoe (52 cards) must reshuffle once <= 20 cards remain, so a hand
-  // can't draw the deck dry: the cut is capped at 52 - 20 = 32 regardless of
+  // has a reserve: the cut is capped at 52 - 20 = 32 regardless of
   // penetration or the cut card.
   const FLOOR_CUT = 52 - 20; // 32
 
@@ -180,7 +180,7 @@ describe('single-deck reshuffle floor', () => {
     expect(needsReshuffle(shoe)).toBe(true);
   });
 
-  it('does not affect multi-deck shoes', () => {
+  it('preserves a six-deck cut whose natural reserve exceeds 20', () => {
     const shoe = createShoe({ shoe: { numberOfDecks: 6, penetration: 0.9 } }, { rng: mulberry32(1) });
     expect(shoe.cutIndex).toBe(Math.floor(312 * 0.9)); // 280 — no floor applied
   });

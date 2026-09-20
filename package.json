@@ -1,7 +1,7 @@
 {
   "name": "blackjack-trainer",
-  "version": "0.1.0",
-  "description": "Offline, config-driven blackjack trainer PWA. Phase 1: playable core (MVP).",
+  "version": "0.2.0",
+  "description": "Offline blackjack trainer with computed strategy, Hi-Lo counting, and betting simulation.",
   "type": "module",
   "private": true,
   "scripts": {
@@ -16,5 +16,8 @@
     "vite": "^8.0.16",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.9"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   }
 }
