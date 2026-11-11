@@ -232,7 +232,11 @@ function renderSettingsPanel(g, options) {
           <span class="toggle-knob"></span>
         </button>
       </div>
-      <p class="settings-example">Reshuffle at a random point late in the shoe</p>
+      <p class="settings-example">${
+        cutCard
+          ? 'Reshuffle at a random point late in the shoe'
+          : 'Reshuffle at the same fixed depth every shoe'
+      }</p>
       <div class="settings-section">Bankroll</div>
       <div class="settings-row">
         <span class="settings-label">Starting amount</span>
@@ -719,7 +723,6 @@ function renderContent(root, g, options = {}) {
           ${startLabel}
         </span>
         <span class="topbar-actions">
-          <span class="rules-chip">${rulesChip(g.rules)}</span>
           <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">📊</button>
           <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${muted ? '🔇' : '🔊'}</button>
           <button class="btn icon" data-action="openSettings" aria-label="Settings" title="Settings">⚙️</button>
@@ -733,6 +736,7 @@ function renderContent(root, g, options = {}) {
       ${settingsShown ? '<div class="settings-backdrop" data-action="closeSettings"></div>' : ''}
       ${settingsShown ? renderSettingsPanel(g, options) : ''}
       ${renderCount(g, options)}
+      <div class="rules-line"><span class="rules-chip">${rulesChip(g.rules)}</span></div>
       ${g.roundVoided ? '<p class="game-notice" role="status">Shoe ran out. This hand was voided, all stakes refunded, and a fresh shoe shuffled.</p>' : ''}
       ${options.settings && (g.rules.shoe.numberOfDecks !== options.settings.numberOfDecks || g.rules.table.startingBankroll !== options.settings.startingAmount) ? '<p class="game-notice" role="status">Settings will apply at the next betting round.</p>' : ''}
       ${renderPwa(g, options.pwa)}

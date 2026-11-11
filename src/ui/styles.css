@@ -127,6 +127,14 @@ body {
   opacity: 0.7;
 }
 
+/* The rules chip on its own line, left-aligned under the Hi-Lo count bar:
+   same horizontal margin as .count-bar, inset by the bar's inner padding so
+   the text lines up under "Hi-Lo". */
+.rules-line {
+  margin: 0.35rem 0.25rem 0;
+  padding: 0 0.7rem;
+}
+
 .btn.icon {
   flex: 0 0 auto;
   width: 2.2rem;
