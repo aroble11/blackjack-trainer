@@ -515,14 +515,24 @@ body {
   gap: 0;
 }
 
+/* Card width scales with the screen: ~19% of the width, but never so tall it
+   crowds a short screen (11% of the height), within 56–96px. Split hands sit
+   side by side, so they use a smaller size. */
+.game {
+  --card-w: clamp(56px, min(19vw, 11dvh), 96px);
+}
+.player-area:has(.hand-block + .hand-block) {
+  --card-w: clamp(48px, min(14vw, 9dvh), 72px);
+}
+
 /* Cards overlap like a real fanned hand; later cards naturally stack on top. */
 .card-slot + .card-slot {
-  margin-left: -20px;
+  margin-left: calc(var(--card-w) * -0.34);
 }
 
 /* ── cards (programmatic SVG faces from src/assets) ──────────────────────── */
 .card-svg {
-  width: 58px;
+  width: var(--card-w);
   height: auto;
   display: block;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
@@ -939,15 +949,21 @@ body {
   color: #f3d6d2;
 }
 
+/* The hint sits on the felt between the dealer's and player's hands (in place
+   of the table branding). The hands keep their natural height; the hint gets
+   whatever is left and scrolls inside itself on a short screen. */
 .hint-panel {
-  /* Reserve the right edge for the floating surrender/hint buttons:
-     their 2px offset + 2.2rem width (from .btn.icon), plus a 0.75rem gap that
-     mirrors the panel's left inset (the .game horizontal padding). */
-  width: calc(100% - 2px - 2.2rem - 0.75rem);
-  padding: 0.6rem 0.8rem;
+  position: relative;
+  z-index: 2;
+  flex: 0 1 auto;
+  min-height: 3.2rem;
+  overflow-y: auto;
+  align-self: center;
+  width: min(94%, 360px);
+  padding: 0.5rem 0.75rem;
   border: 1px solid rgba(232, 198, 106, 0.5);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .hint-move {
@@ -1174,7 +1190,12 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--paper); ou
 .pwa-status:empty { display: none; }
 .pwa-status .btn { min-height: 32px; padding: .25rem .65rem; margin-left: .4rem; }
 progress { width: 100%; accent-color: var(--gold); }
-@media (max-height: 650px) { .hint-panel { max-height: 25dvh; overflow-y: auto; } }
+/* Short screens: while the hint is open, drop the chip stack under the hand
+   (the amount stays) to give the hint more room. */
+@media (max-height: 650px) {
+  .table-area:has(.hint-panel) .hand-stake .bet-stack { display: none; }
+  .hint-why { font-size: 0.8rem; }
+}
 
 /* Inline confirmation for the destructive "Reset bankroll" action. */
 .confirm-bar {
@@ -1191,3 +1212,12 @@ progress { width: 100%; accent-color: var(--gold); }
 }
 .confirm-bar span { flex: 1 1 auto; }
 .confirm-bar .btn { min-height: 36px; padding: .25rem .8rem; }
+
+/* Round over: "Change bet" + "Rebet & deal" side by side. */
+.round-row {
+  display: flex;
+  gap: .5rem;
+  width: 100%;
+}
+.round-row .btn { flex: 1 1 0; }
+.round-row .btn.primary { flex-grow: 1.6; }

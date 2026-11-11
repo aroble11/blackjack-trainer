@@ -22,6 +22,7 @@ import {
   addToBet,
   clearBet,
   canDeal,
+  canRebet,
   deal,
   hit,
   stand,
@@ -85,7 +86,7 @@ export function mount(root, game, options = {}) {
     if (ui.reshuffling || ui.reveal != null || options.pwa?.updating) return;
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
-    const action = el.dataset.action;
+    let action = el.dataset.action;
     unlockAudio(); // a real user gesture — unlock/resume audio
 
     if (action === 'installUpdate') {
@@ -254,6 +255,22 @@ export function mount(root, game, options = {}) {
     // A fresh action clears the previous hint reveal + deviation note.
     ui.hintShown = false;
     ui.deviation = null;
+
+    // "Rebet & deal": start the next round at the same bet, then deal it as if
+    // Deal had been tapped (so a due reshuffle still gets its pause). If the
+    // carried bet can't be dealt (e.g. a pending settings change reset it),
+    // stop at the betting screen instead.
+    if (action === 'rebet') {
+      if (!canRebet(game)) return;
+      nextRound(game);
+      applyPendingSettings(game, settings);
+      if (!canDeal(game)) {
+        if (persist) persist();
+        render(root, game, options);
+        return;
+      }
+      action = 'deal';
+    }
 
     // Dealing into a depleted shoe (or a shoe whose deck count no longer matches
     // the configured setting, e.g. changed mid-hand and not yet applied): pause

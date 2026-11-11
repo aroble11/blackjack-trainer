@@ -17,6 +17,8 @@ import {
   canSplit,
   canSurrender,
   canDeal,
+  canRebet,
+  rebetCents,
   isBroke,
   activeHand,
   decisionContext,
@@ -405,7 +407,6 @@ function renderControls(g, options) {
 
   if (g.phase === Phase.PlayerTurn) {
     return `<footer class="controls">
-        ${renderHintPanel(g, options)}
         <div class="action-row">
           ${actionBtn('stand', !canStand(g))}
           ${actionBtn('split', !canSplit(g))}
@@ -429,7 +430,15 @@ function renderControls(g, options) {
       </footer>`;
   }
 
-  // RoundOver.
+  // RoundOver: deal again at the same bet in one tap, or go back to betting.
+  if (canRebet(g)) {
+    return `<footer class="controls">
+        <div class="round-row">
+          ${btn('next', 'Change bet')}
+          ${btn('rebet', `Rebet ${formatMoney(rebetCents(g))} &amp; deal`, { cls: 'primary' })}
+        </div>
+      </footer>`;
+  }
   return `<footer class="controls">
       ${btn('next', 'Next hand', { cls: 'primary' })}
     </footer>`;
@@ -786,7 +795,9 @@ function renderContent(root, g, options = {}) {
             ? renderReshuffleOverlay(options.ui?.reshuffleMessage)
             : g.phase === Phase.RoundOver
               ? renderResultOverlay(g)
-              : feltBranding(g.rules)
+              : // The hint takes the branding's place between the hands, so
+                // opening it never pushes the player's cards off a short screen.
+                (g.phase === Phase.PlayerTurn && renderHintPanel(g, options)) || feltBranding(g.rules)
         }
         ${renderPlayer(g, options)}
       </div>

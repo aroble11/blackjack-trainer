@@ -332,8 +332,18 @@ export function nextRound(g) {
   g.activeHandIndex = 0;
   g.insuranceCents = 0;
   g.insuranceReturnCents = 0;
-  g.betCents = Math.min(g.betCents, maxBetCents(g), g.bankrollCents); // keep last bet, but affordable
+  g.betCents = rebetCents(g); // keep last bet, but affordable
   return g;
+}
+
+/** The bet carried into the next round: the last bet, capped by table max and bankroll. */
+export function rebetCents(g) {
+  return Math.min(g.betCents, maxBetCents(g), g.bankrollCents);
+}
+
+/** Whether "rebet & deal" can deal the next round at the carried-over bet in one step. */
+export function canRebet(g) {
+  return g.phase === Phase.RoundOver && rebetCents(g) >= minBetCents(g);
 }
 
 export function isBroke(g) {
