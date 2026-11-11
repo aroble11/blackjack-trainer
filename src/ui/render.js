@@ -30,7 +30,7 @@ import { buildHistogram } from '../sim/histogram.js';
 import { BETTING_SYSTEMS } from '../sim/betting-systems.js';
 import { stagedView } from './dealer-reveal.js';
 import { formatCostPerDollar, insuranceOdds } from '../teaching/mistakes.js';
-import { DECK_CHOICES, AMOUNT_CHOICES, choicesWith, settingsPending } from '../persistence/settings.js';
+import { DECK_CHOICES, AMOUNT_CHOICES, choicesWith, settingsPending, QUIZ_EVERY } from '../persistence/settings.js';
 import { canVibrate } from '../assets/haptics.js';
 import { canKeepAwake } from './wake-lock.js';
 import { icon } from '../assets/icons.js';
@@ -373,6 +373,8 @@ function renderSettingsPanel(g, options) {
       ${teachingToggle('explainHints', 'Explain the hint', t, t.showBasicStrategyHints)}
       ${teachingToggle('warnOnStrategyDeviation', 'Flag mistakes', t)}
       ${teachingToggle('showTrueCount', 'Show true count', t, countingActive && showCount)}
+      ${switchRow('toggleCountQuiz', 'countQuiz', 'Count quiz', !!options.settings?.countQuiz && countingActive, countingActive)}
+      <p class="settings-example">Hides the count and asks you for the running count every ${QUIZ_EVERY} hands.</p>
       <div class="settings-row">
         <span class="settings-label">Hint strategy</span>
         <select class="settings-select" data-action="selectStrategy" aria-label="Hint strategy"${
@@ -565,6 +567,21 @@ function renderControls(g, options) {
       </footer>`;
   }
 
+  // The count quiz (between hands): − / + to set your answer, then Check → Continue.
+  const quiz = options.ui?.quiz;
+  if (quiz) {
+    return quiz.result
+      ? `<footer class="controls">${btn('quizContinue', 'Continue', { cls: 'primary quiz-continue' })}</footer>`
+      : `<footer class="controls">
+          <div class="quiz-row">
+            <button class="btn quiz-step" data-action="quizMinus" aria-label="Lower">−</button>
+            <span class="quiz-guess" aria-live="polite">${fmtRunning(quiz.guess)}</span>
+            <button class="btn quiz-step" data-action="quizPlus" aria-label="Higher">+</button>
+            ${btn('quizCheck', 'Check', { cls: 'primary quiz-check' })}
+          </div>
+        </footer>`;
+  }
+
   // RoundOver: deal again at the same bet in one tap, or go back to betting.
   if (canRebet(g)) {
     return `<footer class="controls">
@@ -606,6 +623,18 @@ function renderResultOverlay(g) {
       <span class="result-text">${text}</span>
       ${amount ? `<span class="result-amount">${amount}</span>` : ''}
     </div>`;
+}
+
+/** The count-quiz question / answer, shown in the middle of the felt. */
+function renderQuizPanel(quiz) {
+  const body = quiz.result
+    ? quiz.result.right
+      ? `<p class="hint-move">Correct! The running count is <strong>${fmtRunning(quiz.answer)}</strong>.</p>`
+      : `<p class="hint-move">It's <strong>${fmtRunning(quiz.answer)}</strong> — you said ${fmtRunning(quiz.guess)}.</p>
+         <p class="hint-why">Hi-Lo: 2–6 count +1, 7–9 count 0, tens and aces −1. The hole card only counts once it's turned over.</p>`
+    : `<p class="hint-move">Count check: what's the <strong>running count</strong>?</p>
+       <p class="hint-why">Every card seen since the last shuffle, including the dealer's.</p>`;
+  return `<div class="hint-panel quiz-panel" role="status">${body}</div>`;
 }
 
 // Shown in place of the felt branding while controls.js holds the 2s pause
@@ -677,6 +706,13 @@ function renderCount(g, options) {
     return '';
   }
   const { running, trueCount, decksRemaining } = countFromShoe(g.shoe, t.countingSystem);
+  if (options.settings?.countQuiz) {
+    return `<div class="count-bar" role="status" aria-label="Card counting readout">
+        <span class="count-system">Hi-Lo</span>
+        <span class="count-stat"><span class="count-label">Count hidden — quiz on</span></span>
+        <span class="count-decks">${decksRemaining.toFixed(1)} decks</span>
+      </div>`;
+  }
   const truePart = t.showTrueCount
     ? `<span class="count-stat"><span class="count-label">True</span><span class="count-val ${signClass(
         Math.round(trueCount * 10)
@@ -932,7 +968,9 @@ function renderContent(root, g, options = {}) {
         ${
           options.ui?.reshuffling
             ? renderReshuffleOverlay(options.ui?.reshuffleMessage)
-            : g.phase === Phase.RoundOver
+            : options.ui?.quiz
+              ? renderQuizPanel(options.ui.quiz)
+              : g.phase === Phase.RoundOver
               ? renderResultOverlay(g)
               : // The hint takes the branding's place between the hands, so
                 // opening it never pushes the player's cards off a short screen.

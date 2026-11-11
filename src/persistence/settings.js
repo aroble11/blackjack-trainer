@@ -4,6 +4,8 @@ import { Phase, rebuildShoe, resetBankroll, setBet } from '../engine/game.js';
  * isn't listed is still accepted and shown alongside these). */
 export const DECK_CHOICES = [1, 2, 4, 6, 8];
 export const AMOUNT_CHOICES = [100, 250, 500, 1000, 2500, 5000, 10000];
+/** The count quiz asks for the running count every this many completed hands. */
+export const QUIZ_EVERY = 5;
 
 /** The listed choices plus `current` if it isn't one of them, ascending. */
 export function choicesWith(choices, current) {
@@ -22,6 +24,7 @@ export function normalizeSettings(saved, rules, strategies) {
     showCardCount: bool('showCardCount', true), showStartingAmount: bool('showStartingAmount', false),
     randomCutCard: bool('randomCutCard', rules.shoe.randomCutCard),
     vibration: bool('vibration', true), keepAwake: bool('keepAwake', true),
+    countQuiz: bool('countQuiz', false),
     numberOfDecks: integer('numberOfDecks', rules.shoe.numberOfDecks, 1, 8),
     startingAmount, maxBet: integer('maxBet', rules.table.maxBet, 100, startingAmount),
     strategy: strategies.some((s) => s.id === input.strategy) ? input.strategy : 'basic',

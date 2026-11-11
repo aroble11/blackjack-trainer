@@ -41,9 +41,10 @@ import {
 } from '../engine/game.js';
 import { recommend } from '../teaching/strategies.js';
 import { decisionCost, situationKey, insuranceOdds } from '../teaching/mistakes.js';
-import { emptyStats, recordDecision, recordRound, recordInsurance, recordDrill } from '../teaching/stats.js';
+import { emptyStats, recordDecision, recordRound, recordInsurance, recordDrill, recordQuiz } from '../teaching/stats.js';
+import { countFromShoe } from '../teaching/counting.js';
 import { newQuestion, gradeAnswer } from '../teaching/drill.js';
-import { applyPendingSettings, applyTeaching, RULE_CHOICES } from '../persistence/settings.js';
+import { applyPendingSettings, applyTeaching, RULE_CHOICES, QUIZ_EVERY } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 import { formatMoney } from '../engine/money.js';
 import { needsReveal } from './dealer-reveal.js';
@@ -200,6 +201,13 @@ export function mount(root, game, options = {}) {
       render(root, game, options);
       return;
     }
+    if (action === 'toggleCountQuiz') {
+      if (settings) settings.countQuiz = !settings.countQuiz;
+      ui.quizHands = 0;
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
     // Settings → Teaching: display-only, so they apply immediately.
     if (action === 'toggleTeaching') {
       const key = el.dataset.value;
@@ -330,6 +338,35 @@ export function mount(root, game, options = {}) {
       return;
     }
 
+    // ── count quiz (between hands) ───────────────────────────────────────────
+    if (action === 'quizMinus' || action === 'quizPlus') {
+      if (ui.quiz && !ui.quiz.result) ui.quiz.guess += action === 'quizPlus' ? 1 : -1;
+      render(root, game, options);
+      return;
+    }
+    if (action === 'quizCheck') {
+      if (!ui.quiz || ui.quiz.result) return;
+      const right = ui.quiz.guess === ui.quiz.answer;
+      ui.quiz.result = { right };
+      recordQuiz(stats, right);
+      if (right) { sound.win?.(); haptic.win(); } else { sound.lose?.(); haptic.lose(); }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+    if (action === 'quizContinue') {
+      if (!ui.quiz) return;
+      action = ui.quiz.pending; // carry on with the Next / Rebet that the quiz paused
+      ui.quiz = null;
+      ui.quizHands = 0;
+    } else if ((action === 'next' || action === 'rebet') && quizDue(game, settings, ui)) {
+      // Pause before leaving the finished round to ask for the running count.
+      ui.quiz = { guess: 0, answer: countFromShoe(game.shoe).running, pending: action, result: null };
+      ui.hintShown = false;
+      render(root, game, options);
+      return;
+    }
+
     // A fresh action clears the previous hint reveal + deviation note.
     ui.hintShown = false;
     ui.deviation = null;
@@ -405,6 +442,7 @@ export function mount(root, game, options = {}) {
     const roundJustEnded = game.phase === Phase.RoundOver && phaseBefore !== Phase.RoundOver;
     if (roundJustEnded) {
       recordRound(stats, roundNet(game));
+      ui.quizHands = (ui.quizHands ?? 0) + 1;
       persist?.();
     }
     if (roundJustEnded && needsReveal(game) && !prefersReducedMotion()) {
@@ -507,6 +545,13 @@ function gradeDecision(game, action, settings) {
     stakeCents: hand.stakeCents, // this hand's bet before the decision (= original bet)
     label: rec.fallback ? 'Basic strategy' : rec.label,
   };
+}
+
+/** Is a count-quiz question due (quiz on, counting active, enough hands since the last)? */
+function quizDue(game, settings, ui) {
+  const t = game.rules.teaching || {};
+  const counting = t.showCardCounting && t.countingSystem !== 'none' && !game.rules.shoe.continuousShuffle;
+  return !!settings?.countQuiz && counting && game.phase === Phase.RoundOver && (ui.quizHands ?? 0) >= QUIZ_EVERY;
 }
 
 /** Net bankroll change of the finished round (hands + insurance), in cents. */

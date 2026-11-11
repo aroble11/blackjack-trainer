@@ -1371,3 +1371,27 @@ progress { width: 100%; accent-color: var(--gold); }
 .train-scroll > .btn,
 .train-scroll > .drill-moves,
 .train-scroll > .confirm-bar { flex: 0 0 auto; }
+
+/* Count quiz: − value + Check, all thumb-sized. */
+.quiz-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+.btn.quiz-step {
+  flex: 0 0 3.2rem;
+  min-height: 52px;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+.quiz-guess {
+  flex: 0 0 3.4rem;
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+}
+.btn.quiz-check { flex: 1 1 auto; min-height: 52px; }
+.btn.quiz-continue { width: 100%; min-height: 52px; }
