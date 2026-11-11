@@ -988,7 +988,10 @@ body {
 }
 
 .deviation-note {
-  margin: 0.25rem 0.25rem 0;
+  position: relative;
+  z-index: 2;
+  margin: 0.35rem 0.25rem 0;
+  line-height: 1.35;
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--gold);
   border-radius: 8px;

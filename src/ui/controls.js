@@ -40,7 +40,9 @@ import {
   deckCountChanged,
 } from '../engine/game.js';
 import { recommend } from '../teaching/strategies.js';
-import { applyPendingSettings } from '../persistence/settings.js';
+import { decisionCost, situationKey, insuranceOdds } from '../teaching/mistakes.js';
+import { emptyStats, recordDecision, recordRound, recordInsurance } from '../teaching/stats.js';
+import { applyPendingSettings, applyTeaching, RULE_CHOICES } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 import { formatMoney } from '../engine/money.js';
 import { needsReveal } from './dealer-reveal.js';
@@ -51,6 +53,7 @@ const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 export function mount(root, game, options = {}) {
   const { persist, settings } = options;
+  const stats = (options.stats ??= emptyStats());
   const ui = (options.ui = options.ui || {
     hintShown: false,
     deviation: null,
@@ -176,6 +179,38 @@ export function mount(root, game, options = {}) {
       render(root, game, options);
       return;
     }
+    // Settings → Rules. Stored now, applied when Settings closes between hands,
+    // or at the next betting round (applyPendingSettings) — a rule never
+    // changes under a hand in play.
+    if (action === 'setRule' || action === 'toggleRule') {
+      const r = settings?.tableRules;
+      if (r) {
+        if (action === 'setRule') {
+          const [key, raw] = String(el.dataset.value).split('=');
+          const value = raw === 'true' ? true : raw === 'false' ? false : Number.isFinite(Number(raw)) ? Number(raw) : raw;
+          if (key in RULE_CHOICES && RULE_CHOICES[key].includes(value)) r[key] = value;
+        } else if (el.dataset.value === 'surrender') {
+          r.surrender = r.surrender === 'none' ? 'late' : 'none';
+        } else if (el.dataset.value === 'doubleAfterSplit') {
+          r.doubleAfterSplit = !r.doubleAfterSplit;
+        }
+      }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+    // Settings → Teaching: display-only, so they apply immediately.
+    if (action === 'toggleTeaching') {
+      const key = el.dataset.value;
+      if (settings?.teaching && key in settings.teaching) {
+        settings.teaching[key] = !settings.teaching[key];
+        applyTeaching(settings.teaching, game.rules);
+        if (key === 'showBasicStrategyHints' && !settings.teaching[key]) ui.hintShown = false;
+      }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
     if (action === 'toggleVibration') {
       if (settings) settings.vibration = !settings.vibration;
       setVibration(settings?.vibration);
@@ -284,15 +319,19 @@ export function mount(root, game, options = {}) {
       return;
     }
 
-    // For deviation warnings, capture the recommended move BEFORE applying it.
-    const recommended = recommendedMove(game, action, settings);
+    // Grade the decision BEFORE applying it (the hand/shoe change afterwards).
+    const graded = gradeDecision(game, action, settings);
     const phaseBefore = game.phase;
 
     apply(game, action, el.dataset.value);
     if (game.phase === Phase.Betting) applyPendingSettings(game, settings);
     actionSound(game, action);
 
-    if (recommended && recommended !== action) ui.deviation = recommended;
+    if (graded) {
+      if (graded.kind === 'insurance') recordInsurance(stats, graded.chosen === 'declineInsurance');
+      else recordDecision(stats, graded.key, graded.correct, graded.cost ?? 0);
+      if (!graded.correct && game.rules.teaching?.warnOnStrategyDeviation) ui.deviation = graded;
+    }
 
     if (persist) persist();
     showResult(action, phaseBefore);
@@ -308,6 +347,10 @@ export function mount(root, game, options = {}) {
    */
   function showResult(action, phaseBefore) {
     const roundJustEnded = game.phase === Phase.RoundOver && phaseBefore !== Phase.RoundOver;
+    if (roundJustEnded) {
+      recordRound(stats, roundNet(game));
+      persist?.();
+    }
     if (roundJustEnded && needsReveal(game) && !prefersReducedMotion()) {
       const total = game.dealerCards.length;
       ui.reveal = 1; // upcard only; the hole is still face down
@@ -374,16 +417,46 @@ export function mount(root, game, options = {}) {
 
 const DECISIONS = ['hit', 'stand', 'double', 'split', 'surrender'];
 
-/** The selected hint strategy's move for the current decision, or null if not applicable. */
-function recommendedMove(game, action, settings) {
-  if (!DECISIONS.includes(action)) return null;
-  if (!game.rules.teaching?.warnOnStrategyDeviation) return null;
-  if (game.phase !== Phase.PlayerTurn) return null;
+/**
+ * Grade a decision against the selected hint strategy, before it is applied.
+ * Returns null for non-decisions. For a playing decision:
+ *   { kind:'play', key, chosen, recommended, correct, cost, stakeCents, label }
+ * where `cost` is the computed EV given up per $1 of original bet (null if
+ * unknown). For the insurance prompt (basic strategy: always decline):
+ *   { kind:'insurance', chosen, correct, ev, pTen, stakeCents }
+ * priced from the cards seen so far.
+ */
+function gradeDecision(game, action, settings) {
+  if (game.phase === Phase.Insurance && (action === 'takeInsurance' || action === 'declineInsurance')) {
+    const { ev, pTen } = insuranceOdds(game.shoe, game.rules);
+    const stakeCents = Math.floor(game.playerHands[0].stakeCents / 2);
+    return { kind: 'insurance', chosen: action, correct: action === 'declineInsurance', ev, pTen, stakeCents };
+  }
+  if (!DECISIONS.includes(action) || game.phase !== Phase.PlayerTurn) return null;
   const hand = activeHand(game);
-  if (!hand || !game.dealerCards[0]) return null;
-  // Deviation warnings follow whichever strategy the user selected in Settings.
-  const best = recommend(settings?.strategy ?? 'basic', hand.cards, game.dealerCards[0], game.rules, decisionContext(game)).action;
-  return best;
+  const upcard = game.dealerCards[0];
+  if (!hand || !upcard) return null;
+  const context = decisionContext(game);
+  // Grading follows whichever strategy the user selected in Settings.
+  const rec = recommend(settings?.strategy ?? 'basic', hand.cards, upcard, game.rules, context);
+  const correct = rec.action === action;
+  const cost = correct ? 0 : decisionCost(hand.cards, upcard, game.rules, context, action, rec.action);
+  return {
+    kind: 'play',
+    key: situationKey(hand.cards, upcard),
+    chosen: action,
+    recommended: rec.action,
+    correct,
+    cost,
+    stakeCents: hand.stakeCents, // this hand's bet before the decision (= original bet)
+    label: rec.fallback ? 'Basic strategy' : rec.label,
+  };
+}
+
+/** Net bankroll change of the finished round (hands + insurance), in cents. */
+function roundNet(game) {
+  const insuranceNet = (game.insuranceReturnCents ?? 0) - (game.insuranceCents ?? 0);
+  return game.playerHands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0) + insuranceNet;
 }
 
 function apply(game, action, value) {
@@ -481,8 +554,7 @@ function announce(text) {
 
 /** One-line spoken round result, from the engine's settled figures. */
 function roundSummary(game) {
-  const insuranceNet = (game.insuranceReturnCents ?? 0) - (game.insuranceCents ?? 0);
-  const net = game.playerHands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0) + insuranceNet;
+  const net = roundNet(game);
   const result = net > 0 ? `You won ${formatMoney(net)}` : net < 0 ? `You lost ${formatMoney(-net)}` : 'Push';
   return `${result}. Bankroll ${formatMoney(game.bankrollCents)}.`;
 }

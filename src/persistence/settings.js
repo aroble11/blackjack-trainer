@@ -25,7 +25,82 @@ export function normalizeSettings(saved, rules, strategies) {
     numberOfDecks: integer('numberOfDecks', rules.shoe.numberOfDecks, 1, 8),
     startingAmount, maxBet: integer('maxBet', rules.table.maxBet, 100, startingAmount),
     strategy: strategies.some((s) => s.id === input.strategy) ? input.strategy : 'basic',
+    tableRules: normalizeTableRules(input.tableRules, rules),
+    teaching: normalizeTeaching(input.teaching, rules),
   };
+}
+
+// ── table rules & teaching toggles (Settings → Rules / Teaching) ─────────────
+
+/** The table-rule choices Settings offers. Defaults come from the config. */
+export const RULE_CHOICES = {
+  hitsSoft17: [false, true],
+  blackjackPayout: [1.5, 1.2],
+  surrender: ['late', 'none'],
+  doubleRestriction: ['any', '9-11', '10-11'],
+};
+
+const pick = (value, choices, fallback) => (choices.includes(value) ? value : fallback);
+
+function normalizeTableRules(saved, rules) {
+  const s = saved && typeof saved === 'object' ? saved : {};
+  const surrenderDefault = rules.player.surrender === 'none' ? 'none' : 'late';
+  return {
+    hitsSoft17: typeof s.hitsSoft17 === 'boolean' ? s.hitsSoft17 : !!rules.dealer.hitsSoft17,
+    blackjackPayout: pick(s.blackjackPayout, RULE_CHOICES.blackjackPayout, rules.payouts.blackjack),
+    surrender: pick(s.surrender, RULE_CHOICES.surrender, surrenderDefault),
+    doubleAfterSplit: typeof s.doubleAfterSplit === 'boolean' ? s.doubleAfterSplit : !!rules.player.doubleAfterSplit,
+    doubleRestriction: pick(s.doubleRestriction, RULE_CHOICES.doubleRestriction, rules.player.doubleRestriction ?? 'any'),
+  };
+}
+
+const TEACHING_KEYS = ['showBasicStrategyHints', 'explainHints', 'showTrueCount', 'warnOnStrategyDeviation'];
+
+function normalizeTeaching(saved, rules) {
+  const s = saved && typeof saved === 'object' ? saved : {};
+  const out = {};
+  for (const k of TEACHING_KEYS) out[k] = typeof s[k] === 'boolean' ? s[k] : !!rules.teaching?.[k];
+  return out;
+}
+
+/** Copy the Settings table rules into a rules object (the engine reads these live). */
+function applyTableRules(tableRules, rules) {
+  if (!tableRules) return;
+  rules.dealer.hitsSoft17 = tableRules.hitsSoft17;
+  rules.payouts.blackjack = tableRules.blackjackPayout;
+  rules.player.surrender = tableRules.surrender;
+  rules.player.doubleAfterSplit = tableRules.doubleAfterSplit;
+  rules.player.doubleRestriction = tableRules.doubleRestriction;
+}
+
+/** Teaching toggles only change what's shown, so they apply immediately. */
+export function applyTeaching(teaching, rules) {
+  if (!teaching) return;
+  rules.teaching = { ...rules.teaching };
+  for (const k of TEACHING_KEYS) rules.teaching[k] = teaching[k];
+}
+
+/** True when the table rules in Settings differ from the ones in play. */
+export function tableRulesPending(settings, rules) {
+  const t = settings?.tableRules;
+  if (!t) return false;
+  return (
+    rules.dealer.hitsSoft17 !== t.hitsSoft17 ||
+    rules.payouts.blackjack !== t.blackjackPayout ||
+    rules.player.surrender !== t.surrender ||
+    rules.player.doubleAfterSplit !== t.doubleAfterSplit ||
+    rules.player.doubleRestriction !== t.doubleRestriction
+  );
+}
+
+/** Any Settings change still waiting for the next betting round. */
+export function settingsPending(settings, rules) {
+  if (!settings) return false;
+  return (
+    rules.shoe.numberOfDecks !== settings.numberOfDecks ||
+    rules.table.startingBankroll !== settings.startingAmount ||
+    tableRulesPending(settings, rules)
+  );
 }
 
 export function applySettingsToRules(settings, rules) {
@@ -33,9 +108,14 @@ export function applySettingsToRules(settings, rules) {
   rules.shoe.randomCutCard = settings.randomCutCard;
   rules.table.startingBankroll = settings.startingAmount;
   rules.table.maxBet = settings.maxBet;
+  applyTableRules(settings.tableRules, rules);
+  applyTeaching(settings.teaching, rules);
 }
 
-/** Deck/bankroll restarts wait for betting, after the prior hand is settled. */
+/**
+ * Deck/bankroll restarts and table-rule changes wait for betting, after the
+ * prior hand is settled (a rule must never change under a hand in play).
+ */
 export function applyPendingSettings(game, settings) {
   if (!settings || game.phase !== Phase.Betting) return false;
   const decksChanged = game.rules.shoe.numberOfDecks !== settings.numberOfDecks;

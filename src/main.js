@@ -8,6 +8,7 @@ import { loadPersisted, savePersisted } from './persistence/persist.js';
 import { setMuted } from './assets/sound.js';
 import { setVibration } from './assets/haptics.js';
 import { initWakeLock } from './ui/wake-lock.js';
+import { normalizeStats } from './teaching/stats.js';
 import { normalizeSettings, applySettingsToRules } from './persistence/settings.js';
 import { listStrategies } from './teaching/strategies.js';
 
@@ -52,10 +53,11 @@ async function start() {
     if (game.phase === Phase.Betting || game.phase === Phase.RoundOver) {
       stableBankroll = game.bankrollCents;
     }
-    return savePersisted({ bankrollCents: stableBankroll, settings });
+    return savePersisted({ bankrollCents: stableBankroll, settings, stats });
   };
 
-  const options = { warnings, settings, persist, pwa: {} };
+  const stats = normalizeStats(persisted?.stats);
+  const options = { warnings, settings, stats, persist, pwa: {} };
   const view = mount(document.querySelector('#app'), game, options);
   setupPwa(options.pwa, view.refresh);
 }

@@ -29,7 +29,8 @@ import { countFromShoe } from '../teaching/counting.js';
 import { buildHistogram } from '../sim/histogram.js';
 import { BETTING_SYSTEMS } from '../sim/betting-systems.js';
 import { stagedView } from './dealer-reveal.js';
-import { DECK_CHOICES, AMOUNT_CHOICES, choicesWith } from '../persistence/settings.js';
+import { formatCostPerDollar, insuranceOdds } from '../teaching/mistakes.js';
+import { DECK_CHOICES, AMOUNT_CHOICES, choicesWith, settingsPending } from '../persistence/settings.js';
 import { canVibrate } from '../assets/haptics.js';
 import { canKeepAwake } from './wake-lock.js';
 import { icon } from '../assets/icons.js';
@@ -228,6 +229,54 @@ function deviceToggle(action, label, on, supported) {
       </div>${supported ? '' : '<p class="settings-example">Not supported on this device</p>'}`;
 }
 
+/** A row of segmented choices; each button carries `data-value="key=value"`. */
+function segRow(label, key, choices, current) {
+  const id = `seg-${key}`;
+  return `<div class="settings-row settings-row-stack">
+        <span class="settings-label" id="${id}">${label}</span>
+        <div class="seg" role="radiogroup" aria-labelledby="${id}">
+          ${choices
+            .map(
+              ([value, text]) =>
+                `<button class="seg-btn${value === current ? ' on' : ''}" data-action="setRule" data-value="${key}=${value}"
+                         role="radio" aria-checked="${value === current}">${text}</button>`
+            )
+            .join('')}
+        </div>
+      </div>`;
+}
+
+function switchRow(action, value, label, on, enabled = true) {
+  return `<div class="settings-row">
+        <span class="settings-label">${label}</span>
+        <button class="settings-toggle${on ? ' on' : ''}" data-action="${action}" data-value="${value}" aria-label="${label}"
+                role="switch" aria-checked="${on}"${enabled ? '' : ' disabled'}>
+          <span class="toggle-knob"></span>
+        </button>
+      </div>`;
+}
+
+/**
+ * Settings → Rules: the table rules a casino varies. Like the deck count they
+ * take effect at the next betting round; the hint advisor recomputes from
+ * them, so strategy advice always matches the rules in play.
+ */
+function renderRulesSettings(r) {
+  if (!r) return '';
+  return `<div class="settings-section">Rules</div>
+      <p class="settings-example">Match your casino. Rule changes apply at the next betting round.</p>
+      ${segRow('Dealer on soft 17', 'hitsSoft17', [[false, 'Stands (S17)'], [true, 'Hits (H17)']], r.hitsSoft17)}
+      ${segRow('Blackjack pays', 'blackjackPayout', [[1.5, '3 to 2'], [1.2, '6 to 5']], r.blackjackPayout)}
+      ${segRow('Double down on', 'doubleRestriction', [['any', 'Any 2 cards'], ['9-11', '9–11'], ['10-11', '10–11']], r.doubleRestriction)}
+      ${switchRow('toggleRule', 'doubleAfterSplit', 'Double after split', r.doubleAfterSplit)}
+      ${switchRow('toggleRule', 'surrender', 'Surrender', r.surrender !== 'none')}
+      ${r.blackjackPayout === 1.2 ? '<p class="settings-example">6 to 5 roughly triples the house edge — avoid these tables if you can.</p>' : ''}`;
+}
+
+function teachingToggle(key, label, t, enabled = true) {
+  return switchRow('toggleTeaching', key, label, !!t[key] && enabled, enabled);
+}
+
 /** A native dollar-amount dropdown (big, familiar tap target on phones). */
 function amountSelect(action, label, values, current) {
   return `<select class="settings-select" data-action="${action}" aria-label="${label}">
@@ -251,7 +300,7 @@ function renderSettingsPanel(g, options) {
   const shoeDepletes = !g.rules.shoe.continuousShuffle;
   return `<div class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings">
       <button class="btn settings-close" data-action="closeSettings" aria-label="Close settings">Done</button>
-      <p class="settings-example">Deck changes apply at the next betting round. Changing the starting amount begins a new bankroll after this hand.</p>
+      <p class="settings-example">Deck and rule changes apply at the next betting round. Changing the starting amount begins a new bankroll after this hand.</p>
       <div class="settings-section">Table</div>
       <div class="settings-row settings-row-stack">
         <span class="settings-label" id="decks-label">Number of decks</span>
@@ -277,6 +326,7 @@ function renderSettingsPanel(g, options) {
           ? 'Reshuffle at a random point late in the shoe'
           : 'Reshuffle at the same fixed depth every shoe'
       }</p>
+      ${renderRulesSettings(options.settings?.tableRules)}
       <div class="settings-section">Bankroll</div>
       <div class="settings-row">
         <span class="settings-label">Starting amount</span>
@@ -318,6 +368,10 @@ function renderSettingsPanel(g, options) {
       ${deviceToggle('toggleVibration', 'Vibration', options.settings?.vibration ?? true, canVibrate())}
       ${deviceToggle('toggleKeepAwake', 'Keep screen on', options.settings?.keepAwake ?? true, canKeepAwake())}
       <div class="settings-section">Teaching</div>
+      ${teachingToggle('showBasicStrategyHints', 'Strategy hints', t)}
+      ${teachingToggle('explainHints', 'Explain the hint', t, t.showBasicStrategyHints)}
+      ${teachingToggle('warnOnStrategyDeviation', 'Flag mistakes', t)}
+      ${teachingToggle('showTrueCount', 'Show true count', t, countingActive && showCount)}
       <div class="settings-row">
         <span class="settings-label">Hint strategy</span>
         <select class="settings-select" data-action="selectStrategy" aria-label="Hint strategy"${
@@ -332,11 +386,45 @@ function renderSettingsPanel(g, options) {
     </div>`;
 }
 
-/** The selected hint strategy's label ('Basic strategy' unless the user picked another). */
-function selectedStrategyLabel(options) {
-  const id = options.settings?.strategy ?? 'basic';
-  return listStrategies().find((s) => s.id === id)?.label ?? 'Basic strategy';
+const GERUND = { stand: 'Standing', hit: 'Hitting', double: 'Doubling', split: 'Splitting', surrender: 'Surrendering' };
+const pctText = (p) => `${Math.round(p * 100)}%`;
+
+/**
+ * The note shown after a decision that differs from the selected strategy,
+ * with what it cost in the advisor's computed EV (per $1 bet, and in dollars
+ * for this hand's bet). Sits just above the controls, next to the hand.
+ */
+function renderDeviation(d) {
+  if (!d) return '';
+  let html;
+  if (d.kind === 'insurance') {
+    if (d.ev < 0) {
+      const lost = -d.ev;
+      html =
+        `Basic strategy: <strong>never take insurance</strong>. From the cards seen, the hole card is a ten ` +
+        `${pctText(d.pTen)} of the time (it needs over 33%) — insurance gives up about ${formatCostPerDollar(lost)} ` +
+        `per $1 insured (≈ ${formatMoney(Math.round(lost * d.stakeCents))} here).`;
+    } else {
+      html =
+        `Basic strategy says <strong>no insurance</strong> — but with the cards seen so far (${pctText(d.pTen)} tens left) ` +
+        `it is slightly favourable here. That is a card-counting play, not a basic-strategy one.`;
+    }
+  } else {
+    html = `${d.label} here was <strong>${ACTION_LABEL[d.recommended]}</strong>.`;
+    if (d.cost != null && d.cost > 0) {
+      html +=
+        d.cost >= 0.005
+          ? ` ${GERUND[d.chosen]} gives up about ${formatCostPerDollar(d.cost)} per $1 bet (≈ ${formatMoney(
+              Math.round(d.cost * d.stakeCents)
+            )} on this ${formatMoney(d.stakeCents)} hand).`
+          : ` ${GERUND[d.chosen]} gives up under 1¢ per $1 bet — a near-tie.`;
+    } else if (d.cost != null) {
+      html += ' By the computed odds your play is just as good here.';
+    }
+  }
+  return `<div class="deviation-note" role="status">${html}</div>`;
 }
+
 
 // The revealed hint panel (shown only after the lightbulb is tapped).
 function renderHintPanel(g, options) {
@@ -366,6 +454,34 @@ function renderHintPanel(g, options) {
       <p class="hint-move">${rec.fallback ? 'Basic strategy' : rec.label}: <strong>${ACTION_LABEL[rec.action]}</strong></p>
       ${lines.join('\n      ')}
       <p class="hint-caveat">${caveat}</p>
+    </div>`;
+}
+
+/**
+ * The hint for the insurance prompt. Basic strategy never insures: it pays
+ * 2:1, so it only breaks even when the hole card is a ten more than 1/3 of the
+ * time, and a full shoe has 4/13 ≈ 31% tens. When the count is on screen, the
+ * panel also prices it from the cards seen so far (never the hole card).
+ */
+function renderInsuranceHint(g, options) {
+  const teaching = g.rules.teaching || {};
+  if (!teaching.showBasicStrategyHints || !options.ui?.hintShown) return '';
+  const { pTen, ev, breakEven } = insuranceOdds(g.shoe, g.rules);
+  const countShown =
+    teaching.showCardCounting && teaching.countingSystem !== 'none' && !g.rules.shoe.continuousShuffle &&
+    (options.settings?.showCardCount ?? true);
+  const why = teaching.explainHints
+    ? `<p class="hint-why">Insurance is a side bet that the dealer's hole card is a ten. It pays ${g.rules.payouts.insurance}:1, so it only breaks even if that happens more than ${pctText(breakEven)} of the time — but only 4 of 13 cards (about 31%) are tens.</p>`
+    : '';
+  const counted = countShown
+    ? `<p class="hint-why">From the cards seen so far: ${pctText(pTen)} tens left, so insurance is worth ${ev >= 0 ? '+' : '−'}${formatCostPerDollar(Math.abs(ev))} per $1 insured.${
+        ev >= 0 ? ' Card counters take it here.' : ''
+      }</p>`
+    : '';
+  return `<div class="hint-panel">
+      <p class="hint-move">Basic strategy: <strong>No insurance</strong></p>
+      ${why}
+      ${counted}
     </div>`;
 }
 
@@ -419,6 +535,7 @@ function renderControls(g, options) {
         <p class="prompt">Dealer shows an Ace — take insurance?</p>
         ${btn('takeInsurance', `Insure ${formatMoney(cost)}`, { cls: 'primary' })}
         ${btn('declineInsurance', 'No')}
+        ${hintFab(g)}
       </footer>`;
   }
 
@@ -798,13 +915,8 @@ function renderContent(root, g, options = {}) {
       ${renderCount(g, options)}
       <div class="rules-line"><span class="rules-chip">${rulesChip(g.rules)}</span></div>
       ${g.roundVoided ? '<p class="game-notice" role="status">Shoe ran out. This hand was voided, all stakes refunded, and a fresh shoe shuffled.</p>' : ''}
-      ${options.settings && (g.rules.shoe.numberOfDecks !== options.settings.numberOfDecks || g.rules.table.startingBankroll !== options.settings.startingAmount) ? '<p class="game-notice" role="status">Settings will apply at the next betting round.</p>' : ''}
+      ${settingsPending(options.settings, g.rules) ? '<p class="game-notice" role="status">Settings will apply at the next betting round.</p>' : ''}
       ${renderPwa(g, options.pwa)}
-      ${
-        options.ui?.deviation
-          ? `<div class="deviation-note" role="status">${selectedStrategyLabel(options)} here was <strong>${ACTION_LABEL[options.ui.deviation]}</strong></div>`
-          : ''
-      }
       <div class="table-area">
         ${renderDealer(g, options)}
         ${
@@ -814,11 +926,14 @@ function renderContent(root, g, options = {}) {
               ? renderResultOverlay(g)
               : // The hint takes the branding's place between the hands, so
                 // opening it never pushes the player's cards off a short screen.
-                (g.phase === Phase.PlayerTurn && renderHintPanel(g, options)) || feltBranding(g.rules)
+                (g.phase === Phase.PlayerTurn && renderHintPanel(g, options)) ||
+                (g.phase === Phase.Insurance && renderInsuranceHint(g, options)) ||
+                feltBranding(g.rules)
         }
         ${renderPlayer(g, options)}
       </div>
       ${renderDeckStack(g, options)}
+      ${renderDeviation(options.ui?.deviation)}
       ${renderControls(g, options)}
       ${
         warnings.length
