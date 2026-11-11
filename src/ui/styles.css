@@ -1245,3 +1245,129 @@ progress { width: 100%; accent-color: var(--gold); }
 }
 .round-row .btn { flex: 1 1 0; }
 .round-row .btn.primary { flex-grow: 1.6; }
+
+/* ── Practice screen: stats / chart / drill ──────────────────────────────── */
+.train-tabs {
+  margin: 0.35rem 0 0;
+}
+.train-h {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+.train-reset {
+  align-self: flex-start;
+  min-height: 40px;
+}
+.miss-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.miss-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.85rem;
+}
+.miss-key { font-weight: 700; }
+.miss-meta { opacity: 0.75; text-align: right; }
+
+/* Strategy chart: 11 columns that fit a 320px phone. */
+.chart {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 2px;
+  table-layout: fixed;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.chart th {
+  font-weight: 700;
+  opacity: 0.8;
+  padding: 0.15rem 0;
+}
+.chart th[scope='row'] {
+  text-align: left;
+  white-space: nowrap;
+}
+.chart .chart-corner {
+  width: 2.6rem;
+  text-align: left;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+.chart td {
+  padding: 0.28rem 0;
+  border-radius: 3px;
+  color: #1b1b1b;
+}
+.c-h { background: #e6b8b0; }
+.c-s { background: #f2e3a4; }
+.c-d { background: #9fd3a8; }
+.c-p { background: #9cc3e6; }
+.c-r { background: #c9c3b8; }
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+}
+.chart-legend span {
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
+/* Drill */
+.drill-kinds { flex-wrap: wrap; }
+.drill-kinds .btn.sim-opt { flex: 1 1 auto; font-size: 0.82rem; padding: 0.3rem 0.5rem; }
+.drill-table {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.6rem 0;
+}
+.drill-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.drill-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.drill-move {
+  flex: 1 1 28%;
+  min-height: 52px;
+  font-size: 1rem;
+}
+.drill-feedback {
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid;
+  background: rgba(0, 0, 0, 0.3);
+}
+.drill-feedback.ok { border-color: var(--win); }
+.drill-feedback.bad { border-color: var(--lose); }
+.drill-verdict { margin: 0; font-size: 0.95rem; }
+.drill-verdict strong { color: var(--gold); }
+.drill-next { width: 100%; min-height: 52px; }
+.drill-side .sim-label { flex: none; }
+.train-scroll > .btn,
+.train-scroll > .drill-moves,
+.train-scroll > .confirm-bar { flex: 0 0 auto; }

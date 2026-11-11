@@ -41,7 +41,8 @@ import {
 } from '../engine/game.js';
 import { recommend } from '../teaching/strategies.js';
 import { decisionCost, situationKey, insuranceOdds } from '../teaching/mistakes.js';
-import { emptyStats, recordDecision, recordRound, recordInsurance } from '../teaching/stats.js';
+import { emptyStats, recordDecision, recordRound, recordInsurance, recordDrill } from '../teaching/stats.js';
+import { newQuestion, gradeAnswer } from '../teaching/drill.js';
 import { applyPendingSettings, applyTeaching, RULE_CHOICES } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 import { formatMoney } from '../engine/money.js';
@@ -222,6 +223,61 @@ export function mount(root, game, options = {}) {
     if (action === 'toggleKeepAwake') {
       if (settings) settings.keepAwake = !settings.keepAwake;
       syncWakeLock(settings?.keepAwake);
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+
+    // ── Practice screen: stats / chart / drills (never touches the live game) ─
+    if (action === 'openTrain') {
+      ui.view = 'train';
+      ui.train ??= { tab: 'stats', drill: { kind: 'all', q: null, result: null, asked: 0, right: 0, streak: 0 } };
+      render(root, game, options);
+      return;
+    }
+    if (action === 'closeTrain') { ui.view = 'table'; ui.confirmStatsReset = false; render(root, game, options); return; }
+    if (action === 'trainTab') {
+      ui.train.tab = el.dataset.value;
+      if (ui.train.tab === 'drill' && !ui.train.drill.q) ui.train.drill.q = newQuestion(ui.train.drill.kind);
+      render(root, game, options);
+      return;
+    }
+    if (action === 'drillKind') {
+      const d = ui.train.drill;
+      d.kind = el.dataset.value;
+      d.q = newQuestion(d.kind);
+      d.result = null;
+      render(root, game, options);
+      return;
+    }
+    if (action === 'drillAnswer') {
+      const d = ui.train.drill;
+      if (!d.q || d.result) return;
+      const { correct, rec } = gradeAnswer(d.q, el.dataset.value, game.rules);
+      d.result = { correct, rec, move: el.dataset.value };
+      d.asked += 1;
+      if (correct) { d.right += 1; d.streak += 1; } else d.streak = 0;
+      recordDrill(stats, correct);
+      if (correct) { sound.chip?.(); haptic.tap(); } else { sound.push?.(); haptic.lose(); }
+      if (persist) persist();
+      render(root, game, options);
+      return;
+    }
+    if (action === 'drillNext') {
+      const d = ui.train.drill;
+      d.q = newQuestion(d.kind);
+      d.result = null;
+      render(root, game, options);
+      return;
+    }
+    if (action === 'askResetStats' || action === 'cancelResetStats') {
+      ui.confirmStatsReset = action === 'askResetStats';
+      render(root, game, options);
+      return;
+    }
+    if (action === 'resetStats') {
+      Object.assign(stats, emptyStats());
+      ui.confirmStatsReset = false;
       if (persist) persist();
       render(root, game, options);
       return;

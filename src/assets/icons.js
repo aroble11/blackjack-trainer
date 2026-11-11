@@ -58,6 +58,12 @@ const ICONS = {
       '<rect x="9" y="18" width="6" height="1.7" rx=".85" fill="currentColor"/>' +
       '<rect x="10" y="20.5" width="4" height="1.7" rx=".85" fill="currentColor"/>'
   ),
+  // Graduation cap — the Practice screen (stats, chart, drills).
+  practice: S(
+    fill('M12 4 1.5 9 12 14l10.5-5z') +
+      stroke('M6 11.2v4.3c0 1.6 2.7 3 6 3s6-1.4 6-3v-4.3') +
+      stroke('M21.5 9.2v5.3', 1.6)
+  ),
   // Bar chart — the betting simulator.
   chart: S(
     '<rect x="4" y="12" width="3.6" height="8" rx="1" fill="currentColor"/>' +

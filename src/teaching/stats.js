@@ -9,6 +9,7 @@
  *   situations  { "Hard 16 vs 10": { seen, wrong, cost } }
  *   insurance   { offered, declined }
  *   quiz        { asked, right } — the count quiz
+ *   drill       { asked, right } — strategy drills (kept apart from table play)
  */
 
 const num = (v) => (Number.isFinite(v) ? v : 0);
@@ -24,6 +25,7 @@ export function emptyStats(now = Date.now()) {
     situations: {},
     insurance: { offered: 0, declined: 0 },
     quiz: { asked: 0, right: 0 },
+    drill: { asked: 0, right: 0 },
   };
 }
 
@@ -39,6 +41,7 @@ export function normalizeStats(saved) {
   }
   s.insurance = { offered: num(saved.insurance?.offered), declined: num(saved.insurance?.declined) };
   s.quiz = { asked: num(saved.quiz?.asked), right: num(saved.quiz?.right) };
+  s.drill = { asked: num(saved.drill?.asked), right: num(saved.drill?.right) };
   return s;
 }
 
@@ -72,6 +75,12 @@ export function recordInsurance(stats, declined) {
 export function recordQuiz(stats, right) {
   stats.quiz.asked += 1;
   if (right) stats.quiz.right += 1;
+  return stats;
+}
+
+export function recordDrill(stats, right) {
+  stats.drill.asked += 1;
+  if (right) stats.drill.right += 1;
   return stats;
 }
 

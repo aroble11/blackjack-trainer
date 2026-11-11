@@ -34,6 +34,7 @@ import { DECK_CHOICES, AMOUNT_CHOICES, choicesWith, settingsPending } from '../p
 import { canVibrate } from '../assets/haptics.js';
 import { canKeepAwake } from './wake-lock.js';
 import { icon } from '../assets/icons.js';
+import { renderTrainer } from './trainer-screen.js';
 
 const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
@@ -877,6 +878,10 @@ function renderContent(root, g, options = {}) {
     root.innerHTML = renderSimulator(g, options);
     return;
   }
+  if (options.ui?.view === 'train' && options.stats) {
+    root.innerHTML = renderTrainer(g, options);
+    return;
+  }
   const warnings = options.warnings ?? [];
   const muted = options.settings?.muted ?? false;
   const settingsShown = options.ui?.settingsShown ?? false;
@@ -894,6 +899,11 @@ function renderContent(root, g, options = {}) {
           ${
             g.phase === Phase.Betting
               ? `<button class="btn icon" data-action="askReset" aria-label="Reset bankroll" title="Reset bankroll">${icon('reset')}</button>`
+              : ''
+          }
+          ${
+            g.phase === Phase.Betting
+              ? `<button class="btn icon" data-action="openTrain" aria-label="Practice: stats, strategy chart and drills" title="Practice">${icon('practice')}</button>`
               : ''
           }
           <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">${icon('chart')}</button>
