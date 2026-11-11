@@ -28,7 +28,9 @@ export function unlockAudio() {
       if (!AC) return;
       ctx = new AC();
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    // iOS reports 'interrupted' (not 'suspended') after a call, Siri or an app
+    // switch, so resume from any non-running state or sound stays dead.
+    if (ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch?.(() => {});
   } catch {
     ctx = null; // audio unavailable — sounds become no-ops, gameplay continues
   }

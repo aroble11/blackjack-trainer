@@ -4,21 +4,45 @@
  */
 import { SUIT_COLORS, CARD, CHIP_COLORS } from './theme.js';
 
+// Suit shapes as SVG paths in a 100×100 box (centred on 50,50). Drawn as paths
+// rather than ♠♥♦♣ text because iOS can swap those characters for colour emoji,
+// which ignore the fill colour and look different on every phone.
+const circle = (cx, cy, r) => `M${cx - r} ${cy} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0 Z`;
+const SUIT_PATHS = {
+  '♥': 'M50 92 C22 70 4 52 4 32 C4 16 16 6 29 6 C39 6 46 12 50 21 C54 12 61 6 71 6 C84 6 96 16 96 32 C96 52 78 70 50 92 Z',
+  '♦': 'M50 2 L86 50 L50 98 L14 50 Z',
+  '♠':
+    'M50 3 C80 30 96 46 96 62 C96 76 85 85 72 85 C63 85 56 80 53 73 C54 84 58 91 66 97 L34 97 ' +
+    'C42 91 46 84 47 73 C44 80 37 85 28 85 C15 85 4 76 4 62 C4 46 20 30 50 3 Z',
+  '♣':
+    circle(50, 27, 21) + circle(27, 58, 21) + circle(73, 58, 21) + circle(50, 52, 12) +
+    'M46 58 C46 80 41 90 32 97 L68 97 C59 90 54 80 54 58 Z',
+};
+
+/** A suit shape of the given size centred on (x, y), optionally turned upside-down. */
+function suitShape(x, y, suit, color, size, flip = false) {
+  const d = SUIT_PATHS[suit];
+  if (!d) {
+    return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${size}" fill="${color}">${suit}</text>`;
+  }
+  const s = size / 100;
+  const rot = flip ? ` rotate(180 ${x} ${y})` : '';
+  return `<path d="${d}" fill="${color}" transform="${rot} translate(${x - size / 2} ${y - size / 2}) scale(${s})"/>`;
+}
+
 // Rank/suit index stacked in a corner. Tighter type for the two-char '10'.
 const corner = (rank, suit, color) => {
   const rankSize = rank.length > 1 ? 12 : 15;
   return (
     `<text x="10" y="20" text-anchor="middle" font-size="${rankSize}" font-weight="800" fill="${color}">${rank}</text>` +
-    `<text x="10" y="31" text-anchor="middle" font-size="10" fill="${color}">${suit}</text>`
+    suitShape(10, 27.5, suit, color, 8)
   );
 };
 
 // A single suit pip; pips on the bottom half of the card sit upside-down, as on
-// a real deck, so the card reads the same from either end.
-const pip = (x, y, suit, color, size = 13) =>
-  `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${size}" fill="${color}"${
-    y > 42 ? ` transform="rotate(180 ${x} ${y})"` : ''
-  }>${suit}</text>`;
+// a real deck, so the card reads the same from either end. `size` is the glyph's
+// nominal font size; the drawn shape is ~3/4 of it, matching the old text pips.
+const pip = (x, y, suit, color, size = 13) => suitShape(x, y, suit, color, size * 0.75, y > 42);
 
 // Pip-field geometry on the 60×84 face. Three columns; rows for the classic
 // 2–10 arrangements (columns of three, columns of four, and the centre fillers).
@@ -59,7 +83,7 @@ function royal(rank, suit, color) {
     `<rect x="15" y="23" width="30" height="38" rx="3" fill="#f1e9d2" stroke="${GOLD}" stroke-width="0.9"/>` +
     `<rect x="17" y="25" width="26" height="34" rx="2" fill="none" stroke="${color}" stroke-width="0.5" opacity="0.55"/>` +
     emblem +
-    `<text x="30" y="52" text-anchor="middle" dominant-baseline="central" font-size="15" fill="${color}">${suit}</text>`
+    suitShape(30, 52, suit, color, 11)
   );
 }
 
@@ -70,7 +94,7 @@ export function cardFaceSvg(card) {
   if (isRoyal(card.rank)) {
     body = royal(card.rank, card.suit, color);
   } else if (card.rank === 'A') {
-    body = pip(30, 42, card.suit, color, 30);
+    body = suitShape(30, 42, card.suit, color, 22);
   } else {
     body = (PIPS[card.rank] ?? []).map(([x, y]) => pip(x, y, card.suit, color)).join('');
   }

@@ -480,14 +480,10 @@ The options are grouped into TABLE, BANKROLL, and DISPLAY sections.
 
 NUMBER OF DECKS
    Use the ▲ / ▼ stepper to change how many decks are in the shoe, from 1 up to
-   99. The change takes effect the moment you close the panel: if the count is
-   now different from what it was when you opened Settings, the table pauses on
-   a "RESHUFFLE" announcement (section 4) and rebuilds the shoe at the new size.
-
-   IMPORTANT: if you change the deck count while a hand is still in progress,
-   that hand is abandoned and its bet is forfeited — not refunded — the moment
-   the new shoe is built. There's no extra warning before this happens, so
-   finish or surrender your current hand first if you don't want to lose it.
+   99. The change waits for the next betting round. If you change it while a
+   hand is in progress, that hand plays out and settles normally on the
+   current shoe — nothing is forfeited — and a note says the setting will
+   apply at the next betting round. Then the shoe is rebuilt at the new size.
 
 CUT CARD
    Off by default. Simulates a real dealer's cut card: when on, the table

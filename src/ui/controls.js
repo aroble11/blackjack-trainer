@@ -41,6 +41,7 @@ import {
 import { recommend } from '../teaching/strategies.js';
 import { applyPendingSettings } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
+import { formatMoney } from '../engine/money.js';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -96,6 +97,14 @@ export function mount(root, game, options = {}) {
       return;
     }
     if (action === 'checkUpdate') { options.pwa?.check?.(); return; }
+    // Reset bankroll is destructive, so ↺ only opens a confirm bar; the bar's
+    // own "Reset" button (data-action="reset") does the reset below.
+    if (action === 'askReset' || action === 'cancelReset') {
+      ui.confirmReset = action === 'askReset' ? !ui.confirmReset : false;
+      render(root, game, options);
+      return;
+    }
+    ui.confirmReset = false;
     // Reveal the hint without disturbing game state.
     if (action === 'hint') {
       ui.hintShown = !ui.hintShown;
@@ -272,6 +281,7 @@ export function mount(root, game, options = {}) {
 
     // For deviation warnings, capture the recommended move BEFORE applying it.
     const recommended = recommendedMove(game, action, settings);
+    const phaseBefore = game.phase;
 
     apply(game, action, el.dataset.value);
     if (game.phase === Phase.Betting) applyPendingSettings(game, settings);
@@ -281,6 +291,7 @@ export function mount(root, game, options = {}) {
 
     if (persist) persist();
     render(root, game, options);
+    if (game.phase === Phase.RoundOver && phaseBefore !== Phase.RoundOver) announce(roundSummary(game));
     game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
   });
 
@@ -369,6 +380,25 @@ function playSound(game, action) {
   if (game.phase === Phase.RoundOver) {
     sound[roundOutcome(game)]?.();
   }
+}
+
+/**
+ * Speak a short message through the persistent #sr-status live region (outside
+ * #app, so it survives re-renders). No-op when the region isn't on the page.
+ */
+function announce(text) {
+  const region = typeof document !== 'undefined' ? document.getElementById('sr-status') : null;
+  if (!region) return;
+  region.textContent = '';
+  setTimeout(() => { region.textContent = text; }, 50); // clear first so repeats re-announce
+}
+
+/** One-line spoken round result, from the engine's settled figures. */
+function roundSummary(game) {
+  const insuranceNet = (game.insuranceReturnCents ?? 0) - (game.insuranceCents ?? 0);
+  const net = game.playerHands.reduce((s, h) => s + (h.returnCents - h.stakeCents), 0) + insuranceNet;
+  const result = net > 0 ? `You won ${formatMoney(net)}` : net < 0 ? `You lost ${formatMoney(-net)}` : 'Push';
+  return `${result}. Bankroll ${formatMoney(game.bankrollCents)}.`;
 }
 
 function roundOutcome(game) {

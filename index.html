@@ -13,13 +13,23 @@
       name="description"
       content="Offline blackjack trainer — practice optimal play."
     />
+    <!-- iOS home-screen launch: run full-screen and let the felt extend under
+         the status bar / notch (the topbar pads by safe-area-inset-top). -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Blackjack" />
     <title>Blackjack Trainer</title>
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <!-- The web manifest link and service-worker registration are injected at
          build time by vite-plugin-pwa (see vite.config.js). -->
   </head>
   <body>
-    <div id="app" aria-live="polite"></div>
+    <!-- #app is rebuilt on every action, so it is NOT a live region (screen
+         readers would re-read the whole table). Round results are announced
+         through the separate, persistent #sr-status region instead. -->
+    <div id="app"></div>
+    <div id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

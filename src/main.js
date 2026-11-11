@@ -14,7 +14,21 @@ import { listStrategies } from './teaching/strategies.js';
 const { warnings } = validateRules(RULES);
 warnings.forEach((w) => console.warn('[config] ' + w));
 
+// Ask the browser not to evict our IndexedDB data. Without this, Safari may
+// clear storage for a site that isn't opened for 7 days (bankroll lost). Best
+// effort: unsupported or denied simply leaves the default behavior.
+function requestPersistentStorage() {
+  try {
+    navigator.storage?.persisted?.().then((already) => {
+      if (!already) return navigator.storage.persist?.();
+    }).catch(() => {});
+  } catch {
+    /* storage API unavailable */
+  }
+}
+
 async function start() {
+  requestPersistentStorage();
   const persisted = await loadPersisted();
   const settings = normalizeSettings(persisted?.settings, RULES, listStrategies());
   applySettingsToRules(settings, RULES);

@@ -172,9 +172,9 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 ### Adjust Number of Decks
 - **Purpose:** Change how many decks are in the shoe.
 - **Triggering action:** Tap the ▲/▼ stepper in Settings (range 1–99).
-- **Screen/component:** [render.js:199-210](src/ui/render.js); [controls.js:130-139](src/ui/controls.js).
-- **Data used/changed:** `settings.numberOfDecks` and the live `game.rules.shoe.numberOfDecks`, saved immediately.
-- **Expected result:** The deck count shown in the top bar's rules chip updates instantly. If the count actually changed by the time Settings is closed, any hand currently in progress is **abandoned (the stake is forfeited, not refunded)**, and the app pauses on a "RESHUFFLE" announcement before rebuilding the shoe at the new size ([controls.js:59-81](src/ui/controls.js)).
+- **Screen/component:** `renderSettingsPanel()` [render.js](src/ui/render.js); `decksUp`/`decksDown` handler [controls.js](src/ui/controls.js).
+- **Data used/changed:** `settings.numberOfDecks`, saved immediately; copied to `game.rules.shoe.numberOfDecks` at the next betting round.
+- **Expected result:** The change is deferred to the next betting round (`applyPendingSettings` in [settings.js](src/persistence/settings.js)). A hand in progress is played out and settled normally on the current shoe — nothing is forfeited — while a "Settings will apply at the next betting round" notice shows. Once betting resumes, the shoe is rebuilt at the new size and the rules chip updates.
 - **Related features:** Reshuffle Announcement.
 
 ### Toggle Cut Card (randomized reshuffle)

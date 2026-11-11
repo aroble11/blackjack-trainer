@@ -669,7 +669,7 @@ function renderSimResult(r) {
       ${stat('Worst', fmtMoneySigned(r.worstCents), 'neg')}
     </div>
     ${histogramSvg(r)}
-    <p class="sim-caption">${BETTING_SYSTEMS[r.system].label}: ${r.count.toLocaleString()} sessions, up to ${r.handsPerSession} completed hands each, from $${rules.table.startingBankroll}. ${pct(r.pctUp)} finished ahead, ${pct(r.pctDown)} behind. Bars left of the $0 line are losing sessions.</p>`;
+    <p class="sim-caption">${BETTING_SYSTEMS[r.system].label}: ${r.count.toLocaleString()} sessions, up to ${r.handsPerSession} completed hands each, from ${formatMoney(rules.table.startingBankroll * 100)}. ${pct(r.pctUp)} finished ahead, ${pct(r.pctDown)} behind. Bars left of the $0 line are losing sessions.</p>`;
 }
 
 function renderSimulator(g, options) {
@@ -723,16 +723,25 @@ function renderContent(root, g, options = {}) {
           ${startLabel}
         </span>
         <span class="topbar-actions">
+          ${
+            g.phase === Phase.Betting
+              ? '<button class="btn icon" data-action="askReset" aria-label="Reset bankroll" title="Reset bankroll">↺</button>'
+              : ''
+          }
           <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">📊</button>
           <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${muted ? '🔇' : '🔊'}</button>
           <button class="btn icon" data-action="openSettings" aria-label="Settings" title="Settings">⚙️</button>
-          ${
-            g.phase === Phase.Betting
-              ? '<button class="btn icon" data-action="reset" aria-label="Reset bankroll" title="Reset bankroll">↺</button>'
-              : ''
-          }
         </span>
       </header>
+      ${
+        options.ui?.confirmReset && g.phase === Phase.Betting
+          ? `<div class="confirm-bar" role="alertdialog" aria-label="Confirm bankroll reset">
+              <span>Reset bankroll to ${formatMoney(g.rules.table.startingBankroll * 100)}?</span>
+              ${btn('cancelReset', 'Cancel')}
+              ${btn('reset', 'Reset', { cls: 'primary' })}
+            </div>`
+          : ''
+      }
       ${settingsShown ? '<div class="settings-backdrop" data-action="closeSettings"></div>' : ''}
       ${settingsShown ? renderSettingsPanel(g, options) : ''}
       ${renderCount(g, options)}
@@ -773,7 +782,7 @@ function renderPwa(g, pwa) {
   if (pwa.updating) return '<div class="pwa-status" role="status">Updating app… Please wait.</div>';
   const stable = g.phase === Phase.Betting || g.phase === Phase.RoundOver;
   return '<div class="pwa-status" role="status">' +
-    (pwa.error ? 'Offline setup or update unavailable. Try again while online.' : pwa.ready ? 'Ready for offline play' : '') +
+    (pwa.error ? 'Offline setup or update unavailable. Try again while online.' : pwa.readyToast ? 'Ready for offline play' : '') +
     (pwa.updateAvailable ? btn('installUpdate', stable ? 'Update app' : 'Update after this hand', { disabled: !stable }) : '') + '</div>';
 }
 
