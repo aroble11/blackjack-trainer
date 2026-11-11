@@ -12,3 +12,8 @@ Thumbs.db
 
 # local preview config (contains a machine-specific node path)
 .claude/launch.json
+
+# personal notes & source material (not part of the app, never publish)
+AkaashBlackJack.pdf
+REFINE THIS - KEVINs STRAT NOTES.txt
+attachments/
