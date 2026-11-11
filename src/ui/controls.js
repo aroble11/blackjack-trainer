@@ -42,6 +42,7 @@ import { recommend } from '../teaching/strategies.js';
 import { applyPendingSettings } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 import { formatMoney } from '../engine/money.js';
+import { needsReveal } from './dealer-reveal.js';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -81,7 +82,7 @@ export function mount(root, game, options = {}) {
   });
 
   root.addEventListener('click', (event) => {
-    if (ui.reshuffling || options.pwa?.updating) return;
+    if (ui.reshuffling || ui.reveal != null || options.pwa?.updating) return;
     const el = event.target.closest('[data-action]');
     if (!el || el.disabled) return;
     const action = el.dataset.action;
@@ -269,12 +270,12 @@ export function mount(root, game, options = {}) {
       sound.shuffle();
       setTimeout(() => {
         ui.reshuffling = false;
+        const phaseBefore = game.phase;
         deal(game);
         if (game.phase === Phase.Betting) applyPendingSettings(game, settings);
         sound.deal();
         if (persist) persist();
-        render(root, game, options);
-        game.justReshuffled = false;
+        showResult('deal', phaseBefore);
       }, 2000);
       return;
     }
@@ -285,15 +286,53 @@ export function mount(root, game, options = {}) {
 
     apply(game, action, el.dataset.value);
     if (game.phase === Phase.Betting) applyPendingSettings(game, settings);
-    playSound(game, action);
+    actionSound(game, action);
 
     if (recommended && recommended !== action) ui.deviation = recommended;
 
     if (persist) persist();
-    render(root, game, options);
-    if (game.phase === Phase.RoundOver && phaseBefore !== Phase.RoundOver) announce(roundSummary(game));
-    game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
+    showResult(action, phaseBefore);
   });
+
+  /**
+   * Draw the state after an action. When the action ended the round, the
+   * engine has already played the dealer and settled — instantly. Rather than
+   * showing all of that at once, step through it: the hole card flips, then
+   * each dealer draw lands one at a time, and only then the result (overlay,
+   * badges, bankroll, count, sound, screen-reader announcement). Taps are
+   * ignored while `ui.reveal` is set. Skipped under prefers-reduced-motion.
+   */
+  function showResult(action, phaseBefore) {
+    const roundJustEnded = game.phase === Phase.RoundOver && phaseBefore !== Phase.RoundOver;
+    if (roundJustEnded && needsReveal(game) && !prefersReducedMotion()) {
+      const total = game.dealerCards.length;
+      ui.reveal = 1; // upcard only; the hole is still face down
+      render(root, game, options);
+      game.justReshuffled = false;
+      const step = () => {
+        if (ui.reveal < total) {
+          ui.reveal += 1;
+          sound.deal?.();
+          render(root, game, options);
+          setTimeout(step, ui.reveal < total ? REVEAL.step : REVEAL.result);
+          return;
+        }
+        ui.reveal = null;
+        render(root, game, options);
+        outcomeSound(game);
+        announce(roundSummary(game));
+      };
+      // After a deal, let the dealt cards land before turning the hole card.
+      setTimeout(step, action === 'deal' ? REVEAL.afterDeal : REVEAL.first);
+      return;
+    }
+    render(root, game, options);
+    if (roundJustEnded) {
+      outcomeSound(game);
+      announce(roundSummary(game));
+    }
+    game.justReshuffled = false; // one-shot: the shuffle cue shows for a single render
+  }
 
   // The strategy dropdown is the one control that fires `change`, not click —
   // a single delegated listener, mirroring the click one above.
@@ -368,7 +407,24 @@ function apply(game, action, value) {
   }
 }
 
-function playSound(game, action) {
+/** Timing (ms) of the staged dealer reveal. */
+const REVEAL = {
+  first: 450, // stand/double/bust → hole card flips
+  afterDeal: 900, // a natural on the deal: let the dealt cards land first
+  step: 600, // between dealer cards
+  result: 450, // last dealer card → result
+};
+
+function prefersReducedMotion() {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+/** The sound for the action itself (chip click, card flick). */
+function actionSound(game, action) {
   if (['chip', 'clearBet', 'takeInsurance', 'declineInsurance'].includes(action)) {
     sound.chip();
   } else if (action === 'deal') {
@@ -377,9 +433,11 @@ function playSound(game, action) {
   } else if (action === 'hit' || action === 'double' || action === 'split') {
     sound.deal();
   }
-  if (game.phase === Phase.RoundOver) {
-    sound[roundOutcome(game)]?.();
-  }
+}
+
+/** The win/lose/push sting, played once the result is on screen. */
+function outcomeSound(game) {
+  sound[roundOutcome(game)]?.();
 }
 
 /**

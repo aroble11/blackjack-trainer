@@ -26,6 +26,7 @@ import { explainAction } from '../teaching/explain.js';
 import { countFromShoe } from '../teaching/counting.js';
 import { buildHistogram } from '../sim/histogram.js';
 import { BETTING_SYSTEMS } from '../sim/betting-systems.js';
+import { stagedView } from './dealer-reveal.js';
 
 const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
@@ -39,10 +40,11 @@ const cardBack = cardBackSvg;
 // reset each round.
 const shownByHand = new WeakMap();
 let shownDealer = 0;
+let holeWasDown = false; // was the hole card face down last render? (drives the flip)
 let prevBetCents = 0;
 
-const cardSlot = (svg, isNew, order = 0) =>
-  `<span class="card-slot${isNew ? ' dealt' : ''}"${isNew ? ` style="--deal-i:${order}"` : ''}>${svg}</span>`;
+const cardSlot = (svg, isNew, order = 0, extra = '') =>
+  `<span class="card-slot${isNew ? ' dealt' : ''}${extra}"${isNew ? ` style="--deal-i:${order}"` : ''}>${svg}</span>`;
 
 /** Greedy chip breakdown of a bet, largest first, capped so the stack stays small. */
 function chipBreakdown(cents, denomsDesc) {
@@ -70,7 +72,10 @@ function totalLabel(cards, options) {
 }
 
 function renderDealer(g, options) {
-  if (g.dealerCards.length === 0) shownDealer = 0; // new round
+  if (g.dealerCards.length === 0) {
+    shownDealer = 0; // new round
+    holeWasDown = false;
+  }
   const hidden = !g.dealerHoleRevealed && g.dealerCards.length > 0;
   let cardsHtml = '';
   if (hidden) {
@@ -78,10 +83,15 @@ function renderDealer(g, options) {
       cardSlot(cardFront(g.dealerCards[0]), shownDealer <= 0, 0 - shownDealer) +
       cardSlot(cardBack(), shownDealer <= 1, 1 - shownDealer);
   } else if (g.dealerCards.length) {
+    // The hole card turns over in place (flip) when it was face down last render.
     cardsHtml = g.dealerCards
-      .map((c, i) => cardSlot(cardFront(c), i >= shownDealer, i - shownDealer))
+      .map((c, i) => {
+        const flip = i === 1 && holeWasDown && shownDealer >= 2 ? ' flip' : '';
+        return cardSlot(cardFront(c), i >= shownDealer, i - shownDealer, flip);
+      })
       .join('');
   }
+  holeWasDown = hidden;
   shownDealer = g.dealerCards.length;
   // Bubble shows the value of the dealer's *visible* cards (upcard only while the
   // hole card is down), matching how a real table reads.
@@ -145,10 +155,13 @@ function renderPlayerHand(g, hand, index, options) {
   // hand's own badge spells out its share (omitted on push — always $0, and
   // on a single un-split hand, where the overlay figure already IS that
   // hand's amount).
-  const showHandAmount = g.playerHands.length > 1 && hand.outcome && hand.outcome !== 'push';
+  // Outcomes only show once the round is over (not while the dealer's turn is
+  // still being revealed — the engine has already settled by then).
+  const outcome = g.phase === Phase.RoundOver ? hand.outcome : null;
+  const showHandAmount = g.playerHands.length > 1 && outcome && outcome !== 'push';
   const amountText = showHandAmount ? ` ${formatSignedMoney(hand.returnCents - hand.stakeCents)}` : '';
-  const badge = hand.outcome
-    ? `<span class="badge ${hand.outcome}">${OUTCOME_TEXT[hand.outcome]}${amountText}</span>`
+  const badge = outcome
+    ? `<span class="badge ${outcome}">${OUTCOME_TEXT[outcome]}${amountText}</span>`
     : '';
   return `<div class="hand-block ${active ? 'active' : ''}">
       <div class="hand">${cardsHtml}</div>
@@ -404,7 +417,19 @@ function renderControls(g, options) {
       </footer>`;
   }
 
-  // RoundOver (DealerTurn is transient and never rendered).
+  // The staged dealer reveal: same (disabled) action row, so nothing jumps.
+  if (g.phase === Phase.DealerTurn) {
+    return `<footer class="controls" aria-busy="true">
+        <div class="action-row">
+          ${actionBtn('stand', true)}
+          ${actionBtn('split', true)}
+          ${actionBtn('double', true)}
+          ${actionBtn('hit', true)}
+        </div>
+      </footer>`;
+  }
+
+  // RoundOver.
   return `<footer class="controls">
       ${btn('next', 'Next hand', { cls: 'primary' })}
     </footer>`;
@@ -792,7 +817,9 @@ export function render(root, g, options = {}) {
   const action = root.contains?.(active) ? active?.dataset?.action : null;
   const value = active?.dataset?.value;
   const scroll = root.querySelector?.('.settings-panel')?.scrollTop ?? 0;
-  renderContent(root, g, options);
+  // Mid-reveal, draw the partially-revealed view of the already-settled round.
+  const reveal = options.ui?.reveal;
+  renderContent(root, reveal != null ? stagedView(g, reveal) : g, options);
   const panel = root.querySelector?.('.settings-panel');
   if (panel) panel.scrollTop = scroll;
   if (action) {
