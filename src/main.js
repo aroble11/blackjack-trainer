@@ -6,6 +6,8 @@ import { setupPwa } from './pwa.js';
 import { mount } from './ui/controls.js';
 import { loadPersisted, savePersisted } from './persistence/persist.js';
 import { setMuted } from './assets/sound.js';
+import { setVibration } from './assets/haptics.js';
+import { initWakeLock } from './ui/wake-lock.js';
 import { normalizeSettings, applySettingsToRules } from './persistence/settings.js';
 import { listStrategies } from './teaching/strategies.js';
 
@@ -33,6 +35,8 @@ async function start() {
   const settings = normalizeSettings(persisted?.settings, RULES, listStrategies());
   applySettingsToRules(settings, RULES);
   setMuted(settings.muted);
+  setVibration(settings.vibration);
+  initWakeLock(settings.keepAwake);
 
   const game = createGame(RULES);
 

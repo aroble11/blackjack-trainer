@@ -84,7 +84,7 @@ describe('legal recommendations and table limits', () => {
 describe('saved settings and deferred changes', () => {
   it('normalizes invalid data once and drops unknown properties', () => {
     const s = normalizeSettings({ numberOfDecks: 1000, maxBet: -1, startingAmount: '100', muted: 'false', strategy: 'gone', extra: true }, withRules(), [{ id: 'basic' }]);
-    expect(s).toMatchObject({ numberOfDecks: 99, maxBet: 100, startingAmount: 500, muted: false, strategy: 'basic' });
+    expect(s).toMatchObject({ numberOfDecks: 8, maxBet: 100, startingAmount: 500, muted: false, strategy: 'basic', vibration: true, keepAwake: true });
     expect(s).not.toHaveProperty('extra');
     expect(normalizeSettings(null, withRules(), []).numberOfDecks).toBe(6);
   });

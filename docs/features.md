@@ -91,7 +91,7 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 - **Triggering action:** Happens automatically once all hands and the dealer are done.
 - **Screen/component:** `settleRound()` [game.js:299-313](src/engine/game.js); result overlay [render.js:307-327](src/ui/render.js).
 - **Data used/changed:** Each hand's `outcome`/`returnCents`; `game.bankrollCents`.
-- **Expected result:** A centered overlay reads WON / BLACKJACK! / PUSH / DEALER WINS / SURRENDERED with the net amount; "Next hand" returns to betting.
+- **Expected result:** A centered overlay reads WON / BLACKJACK! / PUSH / DEALER WINS / SURRENDERED with the net amount. "Rebet $X & deal" deals the next hand at the same bet in one tap (`canRebet()`/`rebetCents()` in game.js); "Change bet" returns to betting. When the same bet can't be dealt, only "Next hand" is shown.
 - **Related features:** Dealer Peek & Blackjack Check, Re-buy When Broke.
 
 ### Re-buy When Broke
@@ -102,7 +102,7 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 
 ### Reset Bankroll
 - **Purpose:** Manually start a fresh session at the starting bankroll.
-- **Triggering action:** Tap ↺ in the top bar (only shown during betting).
+- **Triggering action:** Tap ↺ in the top bar (only shown during betting), then "Reset" in the confirmation bar.
 - **Screen/component:** [render.js:604](src/ui/render.js); `resetBankroll()` [game.js:340-346](src/engine/game.js).
 - **Expected result:** Bankroll and bet both reset to the configured starting value.
 
@@ -171,8 +171,8 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 
 ### Adjust Number of Decks
 - **Purpose:** Change how many decks are in the shoe.
-- **Triggering action:** Tap the ▲/▼ stepper in Settings (range 1–99).
-- **Screen/component:** `renderSettingsPanel()` [render.js](src/ui/render.js); `decksUp`/`decksDown` handler [controls.js](src/ui/controls.js).
+- **Triggering action:** Tap 1, 2, 4, 6 or 8 in Settings (`DECK_CHOICES` in settings.js; saved values are clamped to 1–8).
+- **Screen/component:** `renderSettingsPanel()` [render.js](src/ui/render.js); `setDecks` handler [controls.js](src/ui/controls.js).
 - **Data used/changed:** `settings.numberOfDecks`, saved immediately; copied to `game.rules.shoe.numberOfDecks` at the next betting round.
 - **Expected result:** The change is deferred to the next betting round (`applyPendingSettings` in [settings.js](src/persistence/settings.js)). A hand in progress is played out and settled normally on the current shoe — nothing is forfeited — while a "Settings will apply at the next betting round" notice shows. Once betting resumes, the shoe is rebuilt at the new size and the rules chip updates.
 - **Related features:** Reshuffle Announcement.
@@ -184,6 +184,13 @@ Blackjack Trainer is an **offline practice app for blackjack**, built to be inst
 - **Data used/changed:** `settings.randomCutCard` and the live `game.rules.shoe.randomCutCard`, saved immediately; re-picks the current shoe's `cutIndex`.
 - **Expected result:** When on, each shoe's reshuffle point is a random position in the last third (capped at the `penetration` depth so a card buffer always remains). The reshuffle still fires between rounds via the normal Reshuffle Announcement — bankroll unchanged, card count reset. When off, the shoe is dealt deep to the `penetration` point. Grayed out under a continuous shuffler.
 - **Related features:** Reshuffle Announcement, Live Hi-Lo Count.
+
+### Vibration and Keep Screen On
+- **Purpose:** Haptic feedback on Android, and stop the screen sleeping mid-session.
+- **Triggering action:** The "Vibration" and "Keep screen on" switches in Settings → Device (both on by default).
+- **Screen/component:** [haptics.js](src/assets/haptics.js) (`navigator.vibrate`); [wake-lock.js](src/ui/wake-lock.js) (Screen Wake Lock, re-acquired when the app returns to the foreground).
+- **Data used/changed:** `settings.vibration`, `settings.keepAwake`, saved immediately.
+- **Expected result:** Short buzzes on chips, cards and the result (Android only; the switch is greyed out where unsupported, e.g. iPhone). The screen stays on while the app is visible.
 
 ### Mute/Unmute Sound
 - **Purpose:** Silence the app's synthesized sound effects.

@@ -448,7 +448,7 @@ COMMON KNOBS
 
    TIP: you don't need to edit this file just to try a different number of
    decks — the in-game Settings panel (section 11) lets you change it on the
-   fly, from 1 up to 99, without a rebuild.
+   fly (1, 2, 4, 6 or 8 decks), without a rebuild.
 
 THE CAPABILITY GUARD
    A few options describe rules this version doesn't fully implement yet. Rather
@@ -479,8 +479,8 @@ The options are grouped into TABLE, BANKROLL, and DISPLAY sections.
 ── TABLE ─────────────────────────────────────────────────────────────────────
 
 NUMBER OF DECKS
-   Use the ▲ / ▼ stepper to change how many decks are in the shoe, from 1 up to
-   99. The change waits for the next betting round. If you change it while a
+   Tap 1, 2, 4, 6 or 8 to choose how many decks are in the shoe. The change
+   waits for the next betting round. If you change it while a
    hand is in progress, that hand plays out and settles normally on the
    current shoe — nothing is forfeited — and a note says the setting will
    apply at the next betting round. Then the shoe is rebuilt at the new size.
@@ -499,13 +499,12 @@ CUT CARD
 ── BANKROLL ──────────────────────────────────────────────────────────────────
 
 STARTING AMOUNT
-   Use the ▲ / ▼ stepper to set the bankroll you begin with, in $50 steps
-   from $100 up to $10,000 (default $500). Changing it fully restarts the
+   Pick the bankroll you begin with from the dropdown: $100, $250, $500,
+   $1,000, $2,500, $5,000 or $10,000 (default $500). Changing it restarts the
    game — your bankroll is reset to the new amount and the shoe is rebuilt —
-   the moment you close the panel, the same way a deck-count change does
-   (you'll see a "NEW GAME" pause). This happens even between rounds, and any
-   hand in progress is abandoned. If the new starting amount is below your
-   current max bet, the max bet is lowered to match.
+   at the next betting round. A hand in progress plays out and settles
+   normally first. If the new starting amount is below your current max bet,
+   the max bet is lowered to match.
 
 SHOW STARTING AMOUNT
    Off by default. When on, your starting amount is shown as a small "start
@@ -514,8 +513,8 @@ SHOW STARTING AMOUNT
    play.
 
 MAX BET
-   Use the ▲ / ▼ stepper to raise or lower the table's betting ceiling, in
-   $50 steps from $100 up to $10,000 (default $500). Unlike the deck count,
+   Pick the table's betting ceiling from the dropdown, from $100 up to your
+   starting amount (default $500). Unlike the deck count,
    this takes effect immediately and never disturbs the current hand or bet —
    it only changes what you're allowed to bet going forward.
 
@@ -533,6 +532,18 @@ ALTERNATE SOFT VALUE
    Switches how a soft hand's total is shown: "14 · soft" (default) or spelled
    out as "4 or 14 · soft". This only changes the display — the hand is played
    identically either way.
+
+── DEVICE ────────────────────────────────────────────────────────────────────
+
+VIBRATION
+   On by default. Short buzzes when chips go down, cards land, and the round
+   ends. Android only — iPhone browsers don't allow web apps to vibrate, so
+   there the switch is grayed out.
+
+KEEP SCREEN ON
+   On by default. Stops the screen dimming and locking while the app is open
+   (it goes back to normal as soon as you leave the app). Grayed out on
+   browsers that don't support it.
 
 All of these settings (and mute, section 12) are remembered on your device
 between sessions, the same as your bankroll.
@@ -564,8 +575,8 @@ SAVING
    not charged — when you return.
 
 RESETTING
-   Tap ↺ in the top bar (between hands) to reset your bankroll to the starting
-   amount and begin a fresh session.
+   Tap ↺ in the top bar (between hands), then confirm with "Reset", to reset
+   your bankroll to the starting amount and begin a fresh session.
 
 RUNNING OUT
    If your bankroll drops below the table minimum, the game shows "Out of chips."

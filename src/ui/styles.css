@@ -1126,56 +1126,77 @@ body {
   transform: translateX(1.2rem);
 }
 
-.stepper {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.stepper-value {
-  min-width: 2.6rem;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--gold);
-}
-
-.stepper-arrows {
-  display: flex;
+/* Label on its own line with a full-width control under it (deck choice). */
+.settings-row-stack {
   flex-direction: column;
-  gap: 2px;
+  align-items: stretch;
+  gap: 0.45rem;
 }
 
-.stepper-btn {
+/* Segmented choice (1 / 2 / 4 / 6 / 8 decks): one big tap target per option. */
+.seg {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 1.5rem;
+  gap: 4px;
+}
+
+.seg-btn {
+  flex: 1 1 0;
+  min-height: 44px;
   padding: 0;
-  min-height: 0;
-  line-height: 1;
-  font-size: 0.55rem;
-  border-radius: 4px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--paper);
+  border-radius: 8px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: background 0.18s, border-color 0.18s;
 }
 
-.stepper-btn:hover:not(:disabled) {
-  background: var(--gold-dim);
+.seg-btn.on {
+  color: #2a1a0a;
+  background: var(--gold);
   border-color: var(--gold);
+  box-shadow: 0 0 6px rgba(232, 198, 106, 0.4);
 }
 
-.stepper-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-  box-shadow: none;
+/* Bigger switches and dropdowns: comfortable 44px-tall tap targets. */
+.settings-toggle {
+  width: 3.4rem;
+  height: 2rem;
+}
+.settings-toggle::after {
+  /* Invisible padding so a near-miss still hits the switch. */
+  content: '';
+  position: absolute;
+  inset: -8px -6px;
+}
+.toggle-knob {
+  top: 3px;
+  left: 3px;
+  width: 1.55rem;
+  height: 1.55rem;
+}
+.settings-toggle.on .toggle-knob {
+  transform: translateX(1.35rem);
+}
+.settings-select {
+  min-height: 44px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.95rem;
+}
+
+/* Inline SVG icons (src/assets/icons.js) — sized by the button's font size. */
+.ico {
+  display: block;
+  width: 1.25em;
+  height: 1.25em;
+}
+.btn.icon .ico {
+  margin: auto;
 }
 
 /* Release polish: bounded flex children and accessible keyboard controls. */

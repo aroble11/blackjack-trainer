@@ -44,6 +44,8 @@ import { applyPendingSettings } from '../persistence/settings.js';
 import { needsReshuffle, setRandomCutCard } from '../engine/shoe.js';
 import { formatMoney } from '../engine/money.js';
 import { needsReveal } from './dealer-reveal.js';
+import { haptic, setVibration } from '../assets/haptics.js';
+import { syncWakeLock } from './wake-lock.js';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -88,6 +90,7 @@ export function mount(root, game, options = {}) {
     if (!el || el.disabled) return;
     let action = el.dataset.action;
     unlockAudio(); // a real user gesture — unlock/resume audio
+    syncWakeLock(); // (re)acquire the screen wake lock if it's wanted and was dropped
 
     if (action === 'installUpdate') {
       if (game.phase !== Phase.Betting && game.phase !== Phase.RoundOver) return;
@@ -166,40 +169,24 @@ export function mount(root, game, options = {}) {
       render(root, game, options);
       return;
     }
-    if (action === 'decksUp' || action === 'decksDown') {
-      if (settings) {
-        const next = clamp(settings.numberOfDecks + (action === 'decksUp' ? 1 : -1), 1, 99);
-        settings.numberOfDecks = next;
-        // Applied after the current round, when betting resumes.
-      }
+    if (action === 'setDecks') {
+      // Applied after the current round, when betting resumes.
+      if (settings) settings.numberOfDecks = clamp(Number(el.dataset.value) || 6, 1, 8);
       if (persist) persist();
       render(root, game, options);
       return;
     }
-    // Clamp only pending bets; committed stakes are preserved.
-    if (action === 'maxBetUp' || action === 'maxBetDown') {
-      if (settings) {
-        const next = clamp(settings.maxBet + (action === 'maxBetUp' ? 50 : -50), 100, settings.startingAmount);
-        settings.maxBet = next;
-        game.rules.table.maxBet = next;
-        setBet(game, game.betCents);
-      }
+    if (action === 'toggleVibration') {
+      if (settings) settings.vibration = !settings.vibration;
+      setVibration(settings?.vibration);
+      haptic.tap();
       if (persist) persist();
       render(root, game, options);
       return;
     }
-    // Defer bankroll restarts until betting resumes after settlement.
-    if (action === 'startAmountUp' || action === 'startAmountDown') {
-      if (settings) {
-        const next = clamp(settings.startingAmount + (action === 'startAmountUp' ? 50 : -50), 100, 10000);
-        settings.startingAmount = next;
-        // Starting bankroll resets only after the current round is settled.
-        if (settings.maxBet > next) {
-          settings.maxBet = next;
-          game.rules.table.maxBet = next;
-          setBet(game, game.betCents);
-        }
-      }
+    if (action === 'toggleKeepAwake') {
+      if (settings) settings.keepAwake = !settings.keepAwake;
+      syncWakeLock(settings?.keepAwake);
       if (persist) persist();
       render(root, game, options);
       return;
@@ -330,6 +317,7 @@ export function mount(root, game, options = {}) {
         if (ui.reveal < total) {
           ui.reveal += 1;
           sound.deal?.();
+          haptic.card();
           render(root, game, options);
           setTimeout(step, ui.reveal < total ? REVEAL.step : REVEAL.result);
           return;
@@ -355,9 +343,27 @@ export function mount(root, game, options = {}) {
   // a single delegated listener, mirroring the click one above.
   root.addEventListener('change', (event) => {
     if (options.pwa?.updating) return;
-    const el = event.target.closest('[data-action="selectStrategy"]');
-    if (!el) return;
-    if (settings) settings.strategy = el.value;
+    const el = event.target.closest('select[data-action]');
+    if (!el || !settings) return;
+    const action = el.dataset.action;
+    if (action === 'selectStrategy') {
+      settings.strategy = el.value;
+    } else if (action === 'selectMaxBet') {
+      // Clamp only pending bets; committed stakes are preserved.
+      settings.maxBet = clamp(Number(el.value) || settings.maxBet, 100, settings.startingAmount);
+      game.rules.table.maxBet = settings.maxBet;
+      setBet(game, game.betCents);
+    } else if (action === 'selectStartAmount') {
+      // The bankroll restart waits until betting resumes after this hand settles.
+      settings.startingAmount = clamp(Number(el.value) || settings.startingAmount, 100, 10000);
+      if (settings.maxBet > settings.startingAmount) {
+        settings.maxBet = settings.startingAmount;
+        game.rules.table.maxBet = settings.maxBet;
+        setBet(game, game.betCents);
+      }
+    } else {
+      return;
+    }
     if (persist) persist();
     render(root, game, options);
   });
@@ -444,17 +450,22 @@ function prefersReducedMotion() {
 function actionSound(game, action) {
   if (['chip', 'clearBet', 'takeInsurance', 'declineInsurance'].includes(action)) {
     sound.chip();
+    haptic.tap();
   } else if (action === 'deal') {
     if (game.justReshuffled) sound.shuffle();
     sound.deal();
+    haptic.card();
   } else if (action === 'hit' || action === 'double' || action === 'split') {
     sound.deal();
+    haptic.card();
   }
 }
 
-/** The win/lose/push sting, played once the result is on screen. */
+/** The win/lose/push sting (sound + vibration), played once the result is on screen. */
 function outcomeSound(game) {
-  sound[roundOutcome(game)]?.();
+  const outcome = roundOutcome(game);
+  sound[outcome]?.();
+  haptic[outcome]?.();
 }
 
 /**

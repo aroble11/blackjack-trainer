@@ -1,5 +1,15 @@
 import { Phase, rebuildShoe, resetBankroll, setBet } from '../engine/game.js';
 
+/** Choices offered in Settings (a value from the config or an older save that
+ * isn't listed is still accepted and shown alongside these). */
+export const DECK_CHOICES = [1, 2, 4, 6, 8];
+export const AMOUNT_CHOICES = [100, 250, 500, 1000, 2500, 5000, 10000];
+
+/** The listed choices plus `current` if it isn't one of them, ascending. */
+export function choicesWith(choices, current) {
+  return choices.includes(current) ? choices : [...choices, current].sort((a, b) => a - b);
+}
+
 /** Whitelist persisted fields and share the same normalized values with the UI. */
 export function normalizeSettings(saved, rules, strategies) {
   const input = saved && typeof saved === 'object' ? saved : {};
@@ -11,7 +21,8 @@ export function normalizeSettings(saved, rules, strategies) {
     muted: bool('muted', false), softDisplayBothValues: bool('softDisplayBothValues', false),
     showCardCount: bool('showCardCount', true), showStartingAmount: bool('showStartingAmount', false),
     randomCutCard: bool('randomCutCard', rules.shoe.randomCutCard),
-    numberOfDecks: integer('numberOfDecks', rules.shoe.numberOfDecks, 1, 99),
+    vibration: bool('vibration', true), keepAwake: bool('keepAwake', true),
+    numberOfDecks: integer('numberOfDecks', rules.shoe.numberOfDecks, 1, 8),
     startingAmount, maxBet: integer('maxBet', rules.table.maxBet, 100, startingAmount),
     strategy: strategies.some((s) => s.id === input.strategy) ? input.strategy : 'basic',
   };

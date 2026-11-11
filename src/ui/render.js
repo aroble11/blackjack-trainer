@@ -29,6 +29,10 @@ import { countFromShoe } from '../teaching/counting.js';
 import { buildHistogram } from '../sim/histogram.js';
 import { BETTING_SYSTEMS } from '../sim/betting-systems.js';
 import { stagedView } from './dealer-reveal.js';
+import { DECK_CHOICES, AMOUNT_CHOICES, choicesWith } from '../persistence/settings.js';
+import { canVibrate } from '../assets/haptics.js';
+import { canKeepAwake } from './wake-lock.js';
+import { icon } from '../assets/icons.js';
 
 const cardFront = cardFaceSvg;
 const cardBack = cardBackSvg;
@@ -204,12 +208,33 @@ function renderBetStack(g) {
 // The floating lightbulb that toggles the hint; only when hints are enabled.
 function hintFab(g) {
   if (!g.rules.teaching?.showBasicStrategyHints) return '';
-  return `<button class="btn icon hint-fab" data-action="hint" aria-label="Basic-strategy hint" title="Basic-strategy hint">💡</button>`;
+  return `<button class="btn icon hint-fab" data-action="hint" aria-label="Basic-strategy hint" title="Basic-strategy hint">${icon('hint')}</button>`;
 }
 
 // Circular surrender button, stacked above the hint lightbulb.
 function surrenderFab() {
-  return `<button class="btn icon surrender-fab" data-action="surrender" aria-label="Surrender" title="Surrender">🏳️</button>`;
+  return `<button class="btn icon surrender-fab" data-action="surrender" aria-label="Surrender" title="Surrender">${icon('surrender')}</button>`;
+}
+
+/** A settings switch for a device feature; greyed out with a note where the
+ * phone/browser doesn't support it (e.g. iPhone has no web vibration). */
+function deviceToggle(action, label, on, supported) {
+  return `<div class="settings-row">
+        <span class="settings-label">${label}</span>
+        <button class="settings-toggle${on && supported ? ' on' : ''}" data-action="${action}" aria-label="${label}"
+                role="switch" aria-checked="${on && supported}"${supported ? '' : ' disabled'}>
+          <span class="toggle-knob"></span>
+        </button>
+      </div>${supported ? '' : '<p class="settings-example">Not supported on this device</p>'}`;
+}
+
+/** A native dollar-amount dropdown (big, familiar tap target on phones). */
+function amountSelect(action, label, values, current) {
+  return `<select class="settings-select" data-action="${action}" aria-label="${label}">
+      ${values
+        .map((v) => `<option value="${v}"${v === current ? ' selected' : ''}>${formatMoney(v * 100)}</option>`)
+        .join('')}
+    </select>`;
 }
 
 function renderSettingsPanel(g, options) {
@@ -228,16 +253,16 @@ function renderSettingsPanel(g, options) {
       <button class="btn settings-close" data-action="closeSettings" aria-label="Close settings">Done</button>
       <p class="settings-example">Deck changes apply at the next betting round. Changing the starting amount begins a new bankroll after this hand.</p>
       <div class="settings-section">Table</div>
-      <div class="settings-row">
-        <span class="settings-label">Number of decks</span>
-        <div class="stepper">
-          <span class="stepper-value">${decks}</span>
-          <div class="stepper-arrows">
-            <button class="stepper-btn" data-action="decksUp"
-                    aria-label="Increase number of decks"${decks >= 99 ? ' disabled' : ''}>▲</button>
-            <button class="stepper-btn" data-action="decksDown"
-                    aria-label="Decrease number of decks"${decks <= 1 ? ' disabled' : ''}>▼</button>
-          </div>
+      <div class="settings-row settings-row-stack">
+        <span class="settings-label" id="decks-label">Number of decks</span>
+        <div class="seg" role="radiogroup" aria-labelledby="decks-label">
+          ${choicesWith(DECK_CHOICES, decks)
+            .map(
+              (n) =>
+                `<button class="seg-btn${n === decks ? ' on' : ''}" data-action="setDecks" data-value="${n}"
+                         role="radio" aria-checked="${n === decks}" aria-label="${n} deck${n === 1 ? '' : 's'}">${n}</button>`
+            )
+            .join('')}
         </div>
       </div>
       <div class="settings-row">
@@ -255,15 +280,7 @@ function renderSettingsPanel(g, options) {
       <div class="settings-section">Bankroll</div>
       <div class="settings-row">
         <span class="settings-label">Starting amount</span>
-        <div class="stepper">
-          <span class="stepper-value">${formatMoney(startAmount * 100)}</span>
-          <div class="stepper-arrows">
-            <button class="stepper-btn" data-action="startAmountUp"
-                    aria-label="Increase starting amount"${startAmount >= 10000 ? ' disabled' : ''}>▲</button>
-            <button class="stepper-btn" data-action="startAmountDown"
-                    aria-label="Decrease starting amount"${startAmount <= 100 ? ' disabled' : ''}>▼</button>
-          </div>
-        </div>
+        ${amountSelect('selectStartAmount', 'Starting amount', choicesWith(AMOUNT_CHOICES, startAmount), startAmount)}
       </div>
       <div class="settings-row">
         <span class="settings-label">Show starting amount</span>
@@ -274,15 +291,12 @@ function renderSettingsPanel(g, options) {
       </div>
       <div class="settings-row">
         <span class="settings-label">Max bet</span>
-        <div class="stepper">
-          <span class="stepper-value">${formatMoney(maxBet * 100)}</span>
-          <div class="stepper-arrows">
-            <button class="stepper-btn" data-action="maxBetUp"
-                    aria-label="Increase max bet"${maxBet >= startAmount ? ' disabled' : ''}>▲</button>
-            <button class="stepper-btn" data-action="maxBetDown"
-                    aria-label="Decrease max bet"${maxBet <= 100 ? ' disabled' : ''}>▼</button>
-          </div>
-        </div>
+        ${amountSelect(
+          'selectMaxBet',
+          'Max bet',
+          choicesWith(AMOUNT_CHOICES.filter((v) => v <= startAmount), maxBet),
+          maxBet
+        )}
       </div>
       <div class="settings-section">Display</div>
       <div class="settings-row">
@@ -300,6 +314,9 @@ function renderSettingsPanel(g, options) {
         </button>
       </div>
       <p class="settings-example">${on ? '4 or 14 · soft' : '14 · soft'}</p>
+      <div class="settings-section">Device</div>
+      ${deviceToggle('toggleVibration', 'Vibration', options.settings?.vibration ?? true, canVibrate())}
+      ${deviceToggle('toggleKeepAwake', 'Keep screen on', options.settings?.keepAwake ?? true, canKeepAwake())}
       <div class="settings-section">Teaching</div>
       <div class="settings-row">
         <span class="settings-label">Hint strategy</span>
@@ -354,16 +371,16 @@ function renderHintPanel(g, options) {
 
 // Icon + color treatment for each player action button.
 const ACTION_META = {
-  stand: { icon: '✋', label: 'Stand', cls: 'act-stand' },
-  split: { icon: '✂️', label: 'Split', cls: 'act-split' },
-  double: { icon: '⏬', label: 'Double', cls: 'act-double' },
-  hit: { icon: '⬇️', label: 'Hit', cls: 'act-hit' },
+  stand: { label: 'Stand', cls: 'act-stand' },
+  split: { label: 'Split', cls: 'act-split' },
+  double: { label: 'Double', cls: 'act-double' },
+  hit: { label: 'Hit', cls: 'act-hit' },
 };
 
 function actionBtn(action, disabled) {
   const m = ACTION_META[action];
   return `<button class="btn action ${m.cls}" data-action="${action}"${disabled ? ' disabled' : ''}>
-      <span class="act-icon" aria-hidden="true">${m.icon}</span>
+      <span class="act-icon" aria-hidden="true">${icon(action)}</span>
       <span class="act-label">${m.label}</span>
     </button>`;
 }
@@ -759,12 +776,12 @@ function renderContent(root, g, options = {}) {
         <span class="topbar-actions">
           ${
             g.phase === Phase.Betting
-              ? '<button class="btn icon" data-action="askReset" aria-label="Reset bankroll" title="Reset bankroll">↺</button>'
+              ? `<button class="btn icon" data-action="askReset" aria-label="Reset bankroll" title="Reset bankroll">${icon('reset')}</button>`
               : ''
           }
-          <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">📊</button>
-          <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${muted ? '🔇' : '🔊'}</button>
-          <button class="btn icon" data-action="openSettings" aria-label="Settings" title="Settings">⚙️</button>
+          <button class="btn icon" data-action="openSim" aria-label="Betting simulator" title="Betting simulator">${icon('chart')}</button>
+          <button class="btn icon" data-action="toggleMute" aria-label="${muted ? 'Unmute' : 'Mute'}" title="${muted ? 'Unmute' : 'Mute'}">${icon(muted ? 'muted' : 'sound')}</button>
+          <button class="btn icon" data-action="openSettings" aria-label="Settings" title="Settings">${icon('settings')}</button>
         </span>
       </header>
       ${
